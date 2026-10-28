@@ -18,7 +18,6 @@ safe-outputs:
   push-to-pull-request-branch:
     allowed-files:
       - "backend/tests/**"
-    github-token-for-extra-empty-commit: ${{ secrets.GH_AW_CI_TRIGGER_TOKEN }}
   threat-detection:
     continue-on-error: false
     report-as-issue: false

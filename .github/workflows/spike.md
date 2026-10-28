@@ -29,7 +29,7 @@ safe-outputs:
       - name: S2 gate in detection
         run: |
           ls -la /tmp/gh-aw/threat-detection/
-          if grep -q "GATE-FAIL-DETECTION" /tmp/gh-aw/threat-detection/aw.patch 2>/dev/null; then echo "S2 gate failed"; exit 1; fi
+          if grep -q "GATE-FAIL-DETECTION" /tmp/gh-aw/threat-detection/*.patch 2>/dev/null; then echo "S2 gate failed"; exit 1; fi
 jobs:
   gates:
     needs: [agent, detection]
@@ -57,10 +57,11 @@ jobs:
       checks: write
     steps:
       - name: S3 report
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BODY: "spike report: agent=${{ needs.agent.result }} detection=${{ needs.detection.result }} gates=${{ needs.gates.result }} safe_outputs=${{ needs.safe_outputs.result }}"
-        run: gh pr comment ${{ github.event.pull_request.number }} -R ${{ github.repository }} --body "$BODY"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `spike report: agent=${{ needs.agent.result }} detection=${{ needs.detection.result }} gates=${{ needs.gates.result }} safe_outputs=${{ needs.safe_outputs.result }}`;
+            await github.rest.issues.createComment({ ...context.repo, issue_number: context.payload.pull_request.number, body });
 ---
 
 # Spike

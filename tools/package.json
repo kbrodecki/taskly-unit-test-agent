@@ -1,0 +1,23 @@
+{
+  "name": "unit-test-agent-tools",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepare-input": "node src/cli/prepare.ts",
+    "gates": "node src/cli/gates.ts",
+    "report": "node src/cli/report.ts"
+  },
+  "dependencies": {
+    "typescript": "5.8.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "vitest": "4.1.11"
+  }
+}

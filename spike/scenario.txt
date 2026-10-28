@@ -1,2 +1,1 @@
-TOUCH-SOURCE s4-retry
-Use the Edit or Write tool for both files. Then run `git add backend/tests/spike.test.ts backend/src/api/health.ts` and `git commit -m "spike s4"` as two separate Bash calls, without && or pipes. Then call push_to_pull_request_branch.
+GATE-FAIL-DETECTION s2

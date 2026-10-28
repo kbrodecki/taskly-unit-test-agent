@@ -1,1 +1,2 @@
-GATE-FAIL-JOB s2b
+GATE-FAIL-JOB s2b-retry
+Use the Write tool for the test file. Then run `git add backend/tests/spike.test.ts` and `git commit -m "spike s2b"` as two separate Bash calls, without heredocs, && or pipes. Then call push_to_pull_request_branch.

@@ -11,7 +11,8 @@ engine:
 max-turns: 20
 max-ai-credits: 100
 timeout-minutes: 15
-inlined-imports: true
+imports:
+  - .github/agents/spike-agent.md
 skills:
   - .github/skills/spike-marker
 tools:
@@ -64,12 +65,4 @@ jobs:
 
 # Spike
 
-You are the spike agent. Agent marker: AGENT-LOADED-4410.
-
-1. Read `spike/scenario.txt`.
-2. Use the `spike-marker` skill and copy the marker it gives you.
-3. Write `backend/tests/spike.test.ts` with one passing Vitest test whose name contains both markers (agent and skill) and the scenario text verbatim.
-4. If the scenario says `TOUCH-SOURCE`, also append a blank line to `backend/src/api/health.ts`.
-5. Commit the change on the current branch and push it with the push-to-pull-request-branch safe output.
-
-Use the Skill tool to load `spike-marker`; do not read skill or agent files from git history. Mention in the commit message how you obtained each marker.
+Follow the spike agent instructions imported above. Use the Skill tool to load `spike-marker`; do not read skill or agent files from git history. Mention in the commit message how you obtained each marker.

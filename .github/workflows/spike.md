@@ -9,7 +9,7 @@ engine:
   id: claude
   model: sonnet
 max-turns: 20
-max-ai-credits: 100
+max-ai-credits: 3
 timeout-minutes: 15
 imports:
   - .github/agents/spike-agent.md

@@ -12,6 +12,8 @@ max-turns: 20
 max-ai-credits: 100
 timeout-minutes: 15
 inlined-imports: true
+skills:
+  - .github/skills/spike-marker
 tools:
   edit:
   bash: ["cat spike/scenario.txt", "git status", "git diff", "git add *", "git commit *", "npx vitest run *"]
@@ -55,11 +57,19 @@ jobs:
     steps:
       - name: S3 report
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BODY: "spike report: agent=${{ needs.agent.result }} detection=${{ needs.detection.result }} gates=${{ needs.gates.result }} safe_outputs=${{ needs.safe_outputs.result }}"
         run: gh pr comment ${{ github.event.pull_request.number }} -R ${{ github.repository }} --body "$BODY"
 ---
 
 # Spike
 
-Act as the `spike-agent` subagent defined in `.claude/agents/spike-agent.md`: delegate the whole task to it with the Agent tool. If delegation is not available, read that file and follow it yourself, and say so in the commit message.
+You are the spike agent. Agent marker: AGENT-LOADED-4410.
+
+1. Read `spike/scenario.txt`.
+2. Use the `spike-marker` skill and copy the marker it gives you.
+3. Write `backend/tests/spike.test.ts` with one passing Vitest test whose name contains both markers (agent and skill) and the scenario text verbatim.
+4. If the scenario says `TOUCH-SOURCE`, also append a blank line to `backend/src/api/health.ts`.
+5. Commit the change on the current branch and push it with the push-to-pull-request-branch safe output.
+
+Use the Skill tool to load `spike-marker`; do not read skill or agent files from git history. Mention in the commit message how you obtained each marker.

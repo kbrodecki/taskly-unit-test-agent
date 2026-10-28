@@ -11,6 +11,7 @@ engine:
 max-turns: 20
 max-ai-credits: 100
 timeout-minutes: 15
+inlined-imports: true
 tools:
   edit:
   bash: ["cat spike/scenario.txt", "git status", "git diff", "git add *", "git commit *", "npx vitest run *"]

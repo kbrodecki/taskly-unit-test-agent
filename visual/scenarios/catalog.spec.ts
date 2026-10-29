@@ -43,3 +43,17 @@ test('delete-dialog: confirm before deleting', async ({ page }, testInfo) => {
   await expect(page.getByRole('button', { name: 'Delete task' })).toBeVisible();
   await capture(page, scenarioId(testInfo));
 });
+
+test('clear-completed: remove every completed task at once @video', async ({ page }, testInfo) => {
+  await mockApi(page, SAMPLE);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: SAMPLE[2].title })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear completed' }).click();
+  await expect(page.getByText('All completed tasks will be permanently deleted.')).toBeVisible();
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Clear completed' }).last().click();
+  await expect(page.getByText('2 completed tasks cleared.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: SAMPLE[2].title })).toHaveCount(0);
+  await page.waitForTimeout(600);
+  await capture(page, scenarioId(testInfo));
+});

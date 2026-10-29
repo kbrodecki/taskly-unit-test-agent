@@ -134,3 +134,5 @@ Coverage — `backend/coverage/index.html`:
 ```sh
 npm run test:coverage
 ```
+
+Tasks are stored in PostgreSQL; the schema lives in `backend/prisma/`.

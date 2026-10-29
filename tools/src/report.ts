@@ -13,7 +13,6 @@ export interface CoverageRow {
 }
 
 export interface ReportData {
-  mode: 'pr' | 'backfill';
   decisions: DecisionEntry[];
   decisionErrors: string[];
   codeDecisions: CodeDecision[];
@@ -42,7 +41,7 @@ export function sanitize(text: string, max = 300): string {
 }
 
 // File names come from the PR: a backtick would close the code span and let the rest render as markup.
-export function code(path: string): string {
+function code(path: string): string {
   return `\`${path.replace(/[`|\r\n]/g, "'").replace(/@/g, '@\u200b')}\``;
 }
 

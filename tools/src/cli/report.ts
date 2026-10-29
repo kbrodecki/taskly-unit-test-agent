@@ -14,7 +14,6 @@ const input = readJson<AgentInput>(join(dir, 'input.json'));
 const gates = readJson<{ gates: GateResult[]; decisionErrors: string[]; decisions: DecisionEntry[]; authorFailures: string[]; coverage: CoverageRow[]; mutation?: MutationSummary }>(gatesFile);
 
 const data: ReportData = {
-  mode: input.mode,
   decisions: gates.decisions,
   decisionErrors: gates.decisionErrors,
   codeDecisions: input.codeDecisions,

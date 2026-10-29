@@ -13,7 +13,6 @@ const created: DecisionEntry = {
 };
 
 const base: ReportData = {
-  mode: 'pr',
   decisions: [created],
   decisionErrors: [],
   codeDecisions: [{ file: 'README.md', reason: 'filtered', detail: 'outside application source' }],

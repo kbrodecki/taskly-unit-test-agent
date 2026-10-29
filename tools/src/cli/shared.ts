@@ -29,17 +29,16 @@ export function arg(name: string, fallback?: string): string {
 export interface SuiteRun {
   failed: string[];
   coverage: Coverage;
-  ok: boolean;
 }
 
-export function runSuite(root: string, app: string, outDir: string, label: string, extra: string[] = []): SuiteRun {
+function runSuite(root: string, app: string, outDir: string, label: string): SuiteRun {
   const resultFile = join(outDir, `${label}-${app}.json`);
-  const args = ['vitest', 'run', '--coverage', '--coverage.reportOnFailure', '--reporter=json', `--outputFile=${resultFile}`, ...extra];
-  const run = spawnSync('npx', args, { cwd: join(root, app), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const args = ['vitest', 'run', '--coverage', '--coverage.reportOnFailure', '--reporter=json', `--outputFile=${resultFile}`];
+  spawnSync('npx', args, { cwd: join(root, app), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const json = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, 'utf8')) : { testResults: [] };
   const lcovFile = join(root, app, 'coverage', 'lcov.info');
   const coverage = existsSync(lcovFile) ? parseLcov(readFileSync(lcovFile, 'utf8'), app) : new Map();
-  return { failed: failedTests(json, join(root, app)), coverage, ok: run.status === 0 };
+  return { failed: failedTests(json, join(root, app)), coverage };
 }
 
 export function runAll(root: string, outDir: string, label: string): SuiteRun {
@@ -47,7 +46,6 @@ export function runAll(root: string, outDir: string, label: string): SuiteRun {
   return {
     failed: runs.flatMap((run, i) => run.failed.map((name) => `${APPS[i]}/${name}`)),
     coverage: mergeCoverage(...runs.map((run) => run.coverage)),
-    ok: runs.every((run) => run.ok),
   };
 }
 

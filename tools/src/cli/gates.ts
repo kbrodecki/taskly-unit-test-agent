@@ -5,7 +5,7 @@ import { validateDecisions } from '../decisions.ts';
 import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, newTests } from '../gates.ts';
 import type { AgentInput } from '../input.ts';
 import { parsePatch } from '../patch.ts';
-import { linePercent } from '../vitest-results.ts';
+import { failedTests, linePercent } from '../vitest-results.ts';
 import { APPS, arg, deserializeCoverage, git, readJson, runAll, worktreePatch, writeJson } from './shared.ts';
 
 const root = resolve(arg('root', '.'));
@@ -69,8 +69,11 @@ if (diffs.length === 0) {
       const files = testFiles.filter((diff) => diff.path.startsWith(`${app}/`)).map((diff) => diff.path.slice(app.length + 1));
       if (files.length === 0) continue;
       for (let seed = 1; seed <= reruns; seed += 1) {
-        const run = spawnSync('npx', ['vitest', 'run', '--sequence.shuffle', `--sequence.seed=${seed}`, ...files], { cwd: join(root, app), encoding: 'utf8' });
-        if (run.status !== 0) flaky.push(`${app}: run ${seed} of ${reruns} with shuffled order failed`);
+        const resultFile = join(dir, `shuffle-${app}-${seed}.json`);
+        spawnSync('npx', ['vitest', 'run', '--sequence.shuffle', `--sequence.seed=${seed}`, '--reporter=json', `--outputFile=${resultFile}`, ...files], { cwd: join(root, app), encoding: 'utf8' });
+        const json = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, 'utf8')) : { testResults: [] };
+        const added = compareFailures(input.authorFailures, failedTests(json, join(root, app)).map((name) => `${app}/${name}`)).added;
+        if (added.length > 0) flaky.push(`${app}: run ${seed} of ${reruns} with shuffled order failed: ${added.slice(0, 3).join('; ')}`);
       }
     }
     gates.push(gate('G5', `New and changed tests pass ${reruns} shuffled reruns`, flaky));

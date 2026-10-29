@@ -128,7 +128,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
-          sparse-checkout: tools
+          sparse-checkout: |
+            tools
+            .github/scripts
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
@@ -152,34 +154,9 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const fs = require('fs');
-            const marker = '<!-- unit-test-agent-report -->';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const publishReport = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-report.cjs`);
             const results = { agent: '${{ needs.agent.result }}', detection: '${{ needs.detection.result }}', gates: '${{ needs.gates.result }}', push: '${{ needs.safe_outputs.result }}' };
-            const reportFile = '.unit-test-agent/report.md';
-            let body;
-            let conclusion;
-            if (fs.existsSync(reportFile)) {
-              body = fs.readFileSync(reportFile, 'utf8');
-              conclusion = fs.readFileSync('.unit-test-agent/conclusion.txt', 'utf8').trim();
-            }
-            if (!body) {
-              body = `${marker}\n## Unit Test Agent\n\nThe run stopped before the gates produced a result: agent ${results.agent}, threat detection ${results.detection}, gates ${results.gates}. [Run log](${runUrl})\n`;
-              conclusion = 'failure';
-            }
-            if (results.gates === 'success' && !['success', 'skipped'].includes(results.push)) {
-              body += `\n> The gates passed, but pushing the tests to the branch ended with \`${results.push}\`. [Run log](${runUrl})\n`;
-              conclusion = 'failure';
-            }
-            const issue_number = context.payload.pull_request.number;
-            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number, per_page: 100 });
-            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
-            if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
-            else await github.rest.issues.createComment({ ...context.repo, issue_number, body });
-            const { data: pull } = await github.rest.pulls.get({ ...context.repo, pull_number: issue_number });
-            const title = { success: 'Tests added and gates passed', neutral: 'Nothing to test', failure: 'Blocked or failing tests' }[conclusion] || conclusion;
-            await github.rest.checks.create({ ...context.repo, name: 'Unit Test Agent', head_sha: pull.head.sha, status: 'completed', conclusion: conclusion || 'failure', details_url: runUrl, output: { title, summary: body.slice(0, 65000) } });
-            await core.summary.addRaw(body).write();
+            await publishReport({ github, context, core, results, pullNumber: context.payload.pull_request.number });
 ---
 
 # Unit Test Agent

@@ -111,6 +111,11 @@ describe('renderReport', () => {
     );
   });
 
+  it('keeps a file name with backticks, pipes and mentions inside its code span', () => {
+    const report = renderReport({ ...base, codeDecisions: [{ file: 'frontend/src/a` @team |x.ts', reason: 'filtered', detail: 'types only' }] });
+    expect(report).toContain("- `frontend/src/a' @​team 'x.ts`: filtered, types only");
+  });
+
   it('says why mutation score is missing', () => {
     const report = renderReport({ ...base, mutation: { rows: [], reason: 'backend: There were failed tests in the initial test run.' } });
     expect(report).toContain('Mutation score not measured: backend: There were failed tests in the initial test run. G7 used line coverage only.');

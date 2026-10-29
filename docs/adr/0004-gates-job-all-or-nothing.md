@@ -6,7 +6,9 @@ The agent's patch must be checked by code before it reaches the PR branch. In gh
 
 ## Decision
 
-A custom `gates` job runs after detection, applies the patch to the PR head and runs gates G0 to G7. The safe output job has `if: needs.gates.result == 'success'`. The `report` job runs in every case and explains a block.
+A custom `gates` job runs after detection, applies the patch to the PR head and runs gates G0 to G7. The safe output job has `if: needs.gates.result == 'success'`. The `report` job runs whenever threat detection passed and explains a block. When detection itself blocks the run, gh-aw's own conclusion job reports it and our report does not run, because the compiled workflow makes every custom job after detection depend on its success.
+
+The gates read the agent input and the coverage baseline from an artifact that the agent job uploads before the agent starts, because the agent can edit anything in its workspace. From the agent they take only `decisions.json` and the patch, and they fail when the run produced more than one patch.
 
 | Gate | Blocks when |
 |---|---|

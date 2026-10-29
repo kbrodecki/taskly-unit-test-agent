@@ -96,7 +96,8 @@ module.exports = async function publishVisual({ github, context, core, dir }) {
   const body = render({ shots, videos, url, runUrl, has, privateRepo: Boolean(context.payload.repository && context.payload.repository.private) });
 
   const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pull.number, per_page: 100 });
-  const existing = comments.find((comment) => comment.body && comment.body.includes(MARKER));
+  // Only the workflow's own comment: anyone who can comment could post the marker.
+  const existing = comments.find((comment) => comment.user?.login === 'github-actions[bot]' && comment.body && comment.body.includes(MARKER));
   if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
   else await github.rest.issues.createComment({ ...context.repo, issue_number: pull.number, body });
   await core.summary.addRaw(body).write();

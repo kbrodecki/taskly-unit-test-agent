@@ -15,6 +15,16 @@ describe('todo validation', () => {
       .toEqual({ description: 'Details', title: 'Task', priority: 'high', completed: false, due_date: null });
     expect(updateSchema.parse({ due_date: '2026-10-15' })).toEqual({ due_date: '2026-10-15' });
   });
+  it('accepts a title of exactly 80 characters in create and update', () => {
+    const title = 'x'.repeat(80);
+    expect(createSchema.parse({ title }).title).toBe(title);
+    expect(updateSchema.parse({ title })).toEqual({ title });
+  });
+  it('rejects a title longer than 80 characters in create and update', () => {
+    const title = 'x'.repeat(81);
+    expect(createSchema.safeParse({ title }).success).toBe(false);
+    expect(updateSchema.safeParse({ title }).success).toBe(false);
+  });
   it.each([
     {}, { title: '' }, { title: '  ' }, { title: 'x'.repeat(121) },
     { title: 'Task', description: 'x'.repeat(2001) }, { title: 'Task', priority: 'urgent' },

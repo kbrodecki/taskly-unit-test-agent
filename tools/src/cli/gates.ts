@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { validateDecisions } from '../decisions.ts';
-import { checkAssertions, checkPaths, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, newTests } from '../gates.ts';
+import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, newTests } from '../gates.ts';
 import type { AgentInput } from '../input.ts';
 import { parsePatch } from '../patch.ts';
 import { linePercent } from '../vitest-results.ts';
@@ -31,6 +31,8 @@ const gates: GateResult[] = [];
 let coverageAfter = coverageBefore;
 let authorFailures = input.authorFailures;
 
+const promised = validation.ok ? validation.decisions.files : [];
+gates.push(checkPromised(promised, diffs));
 if (diffs.length === 0) {
   gates.push({ id: 'G1-G7', name: 'No test changes to check', status: 'skipped', details: [] });
 } else {
@@ -60,8 +62,7 @@ if (diffs.length === 0) {
     coverageAfter = after.coverage;
     const failures = compareFailures(input.authorFailures, after.failed);
     authorFailures = failures.existing;
-    const crashed = !after.ok && after.failed.length === 0 ? ['a test suite did not run to completion (no failing test reported, non-zero exit)'] : [];
-    gates.push(gate('G4', 'Full backend and frontend suites pass', [...failures.added.map((name) => `${name} fails with the agent changes`), ...crashed]));
+    gates.push(gate('G4', 'Full backend and frontend suites pass', failures.added.map((name) => `${name} fails with the agent changes`)));
 
     const flaky: string[] = [];
     for (const app of APPS) {

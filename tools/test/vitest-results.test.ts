@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failedTests, linePercent } from '../src/vitest-results.ts';
+import { failedTests, linePercent, NO_RESULTS } from '../src/vitest-results.ts';
 
 describe('failedTests', () => {
   it('lists failed tests as file and full name relative to the project', () => {
@@ -10,6 +10,17 @@ describe('failedTests', () => {
       ],
     };
     expect(failedTests(json, '/repo/backend')).toEqual(['tests/router.test.ts > rejects bad id', 'tests/mappers.test.ts > maps dates']);
+  });
+});
+
+describe('failedTests when a suite does not run', () => {
+  it('reports a file that failed to load as a failure', () => {
+    const json = { testResults: [{ name: '/repo/backend/tests/a.test.ts', status: 'failed', assertionResults: [] }] };
+    expect(failedTests(json, '/repo/backend')).toEqual(['tests/a.test.ts > (file failed to run)']);
+  });
+
+  it('reports a run without results as a failure', () => {
+    expect(failedTests({ testResults: [] }, '/repo/backend')).toEqual([NO_RESULTS]);
   });
 });
 

@@ -15,6 +15,12 @@ export function gate(id: string, name: string, details: string[]): GateResult {
   return { id, name, status: details.length === 0 ? 'pass' : 'fail', details };
 }
 
+export function checkPromised(decisions: ReadonlyArray<{ file: string; decision: string; testFile?: string }>, diffs: FileDiff[]): GateResult {
+  const changed = new Set(diffs.filter((diff) => !diff.isDeleted).map((diff) => diff.path));
+  const missing = decisions.filter((entry) => entry.decision !== 'skip' && entry.testFile && !changed.has(entry.testFile));
+  return gate('G0', 'Every create or update decision has its test file in the change', missing.map((entry) => `${entry.file}: ${entry.decision} promised ${entry.testFile}, which the change does not contain`));
+}
+
 const ALLOWED_PATHS = [/\.test\.tsx?$/, /^frontend\/src\/test\//, /^backend\/tests\//];
 
 export function checkPaths(diffs: FileDiff[]): GateResult {

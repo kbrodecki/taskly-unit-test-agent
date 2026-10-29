@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkAssertions, checkPaths, checkValue, compareFailures, guardDiff, lintTests, newTests } from '../src/gates.ts';
+import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, guardDiff, lintTests, newTests } from '../src/gates.ts';
 import { parsePatch } from '../src/patch.ts';
 import { findTests } from '../src/test-ast.ts';
 
@@ -157,5 +157,22 @@ describe('G7 checkValue', () => {
     expect(checkValue(['backend/src/a.ts', 'backend/src/b.ts'], before, after).details).toEqual([
       'backend/src/b.ts: covered lines did not grow (1 before, 1 after)',
     ]);
+  });
+});
+
+describe('checkPromised', () => {
+  it('blocks a create or update whose test file is not in the change', () => {
+    const decisions = [
+      { file: 'backend/src/a.ts', decision: 'update', testFile: 'backend/tests/a.test.ts' },
+      { file: 'backend/src/b.ts', decision: 'create', testFile: 'backend/tests/b.test.ts' },
+      { file: 'backend/src/c.ts', decision: 'skip' },
+    ];
+    const result = checkPromised(decisions, [diff('backend/tests/a.test.ts', ['x'])]);
+    expect(result.status).toBe('fail');
+    expect(result.details).toEqual(['backend/src/b.ts: create promised backend/tests/b.test.ts, which the change does not contain']);
+  });
+
+  it('passes when nothing is promised and nothing changed', () => {
+    expect(checkPromised([{ file: 'backend/src/c.ts', decision: 'skip' }], []).status).toBe('pass');
   });
 });

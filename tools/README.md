@@ -16,10 +16,11 @@ Gates:
 
 | Gate | Blocks when |
 |---|---|
+| G0 | a `create` or `update` decision names a test file the patch does not contain |
 | G1 | the patch touches anything except `*.test.ts(x)`, `frontend/src/test/**` or `backend/tests/**` |
 | G2 | an existing test line is removed or changed (imports and an added trailing comma excepted), or a test is skipped, focused or suppressed |
 | G3 | typecheck fails, or a new test has no `expect` or an `expect` without a matcher |
-| G4 | a test fails with the patch that did not fail without it, or a suite does not run to completion |
+| G4 | a test fails with the patch that did not fail without it, or a test file or suite fails to run |
 | G5 | new or changed test files fail one of five runs in shuffled order |
 | G6 | a new test only checks existence, truthiness or an HTTP status |
 | G7 | a file the agent created or updated tests for gains no covered lines |

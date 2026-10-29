@@ -110,7 +110,7 @@ export function renderReport(data: ReportData): string {
     }
     lines.push('');
   } else if (data.mutation?.reason) {
-    lines.push(`Mutation score not measured: ${sanitize(data.mutation.reason).replace(/\.$/, '')}. G7 used line coverage only.`, '');
+    lines.push(`Mutation score not measured: ${sanitize(data.mutation.reason).replace(/[.:]$/, '')}. G7 used line coverage only.`, '');
   }
   if (data.codeDecisions.length > 0) {
     lines.push('<details><summary>Skipped before the model (filter, deleted, over budget)</summary>', '');

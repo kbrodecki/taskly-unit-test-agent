@@ -22,7 +22,7 @@ flowchart LR
 | Updates to existing tests are additive only | an agent that edits a failing test can hide a regression; a red author test is reported for a human | [ADR 3](docs/adr/0003-additive-test-updates.md) |
 | Gates in their own job decide the push, all or nothing | the patch is pushed only when every gate passes; the agent drops tests it cannot fix itself | [ADR 4](docs/adr/0004-gates-job-all-or-nothing.md) |
 | Visual evidence from the real app on a mocked API | before and after screenshots of fixed scenarios with no model involved; images on a separate branch | [ADR 5](docs/adr/0005-visual-evidence-mocked-api.md) |
-| `skip` is a decision with a closed list of reasons | the report shows why a file got no tests; code limits skips when changed lines are uncovered | [test-decisions skill](.github/skills/test-decisions/SKILL.md) |
+| `skip` is a decision with a closed list of reasons | the report shows why a file got no tests; code rejects `already-covered` and `covered-by-author` while changed lines are uncovered | [test-decisions skill](.github/skills/test-decisions/SKILL.md) |
 | Mutation testing as a signal, not a blocker | Stryker scores before and after the patch; more detected mutants is an alternative proof for G7 | [tools README](tools/README.md) |
 | Backfill is a separate workflow with the same agent and gates | different trigger, input and safe output; the rules stay in one place | [unit-test-backfill.md](.github/workflows/unit-test-backfill.md) |
 
@@ -86,6 +86,9 @@ In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no
 
 ## 7. Limitations
 
+- The untrusted party is the agent, not the PR author. Same-repository authors already have write access. The workflows run their code, and the `gates` job runs the `tools/` version from the PR branch, so a PR can change the gate code it is checked by. A production setup would run the gates from the base branch.
+- The test checks are syntactic. G3 and G6 do not catch a tautology such as `expect(1).toBe(1)`. New tests are matched by title, so a new test that reuses an existing title in another `describe` is not linted. Mutation testing partly covers this.
+- The visual evidence publisher trusts the comparison manifest written by the capture job, which builds PR code. Two PRs that publish at the same moment can race on the `visual-evidence` branch, and the losing one gets no comment.
 - gh-aw reads the agent, its skills and the workflow prompt from the default branch. A change to them takes effect after merge, not in the PR that makes it.
 - Without `GH_AW_CI_TRIGGER_TOKEN`, CI does not run on the agent's commit. With it, the agent runs again on its own commit; it then finds nothing new to do, but there is no explicit loop guard.
 - Skip reasons are not fully stable between runs (E1 stable 1 of 3). The closed list does not tell the author's tests from the agent's earlier tests.

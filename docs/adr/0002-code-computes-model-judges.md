@@ -14,7 +14,7 @@ Everything that can be computed is code in `tools/`, with its own tests:
 
 The model does what needs understanding: one decision per file (`create`, `update` or `skip` with a reason from a closed list), the tests themselves, and at most three attempts to fix each failing test. The contract between them is `decisions.json`, validated against a schema and against the input (every input file decided, no file outside it).
 
-The report is published by our own job, not by the agent. Text from the model (rationales, case names) is shortened and stripped of links, HTML and mentions.
+The report is published by our own job, not by the agent. It renders only from the prepared input and the gate results and never reads files from the agent's workspace. Text from the model (rationales, case names) is shortened and stripped of links, HTML and mentions; file names from the PR are kept inside code spans that they cannot close.
 
 ## Alternatives
 

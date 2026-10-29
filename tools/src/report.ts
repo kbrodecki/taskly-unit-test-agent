@@ -41,6 +41,11 @@ export function sanitize(text: string, max = 300): string {
   return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
 }
 
+// File names come from the PR: a backtick would close the code span and let the rest render as markup.
+export function code(path: string): string {
+  return `\`${path.replace(/[`|\r\n]/g, "'").replace(/@/g, '@\u200b')}\``;
+}
+
 export function conclusion(data: ReportData): Conclusion {
   if (data.decisionErrors.length > 0) return 'failure';
   if (data.gates.some((gate) => gate.status === 'fail')) return 'failure';
@@ -72,7 +77,7 @@ export function renderReport(data: ReportData): string {
     lines.push('| File | Decision | Why | Cases |', '|---|---|---|---|');
     for (const entry of data.decisions) {
       const decision = entry.decision === 'skip' ? `skip (${entry.reason})` : entry.decision;
-      lines.push(`| \`${entry.file}\` | ${decision} | ${sanitize(entry.rationale)} | ${entry.cases.length} |`);
+      lines.push(`| ${code(entry.file)} | ${decision} | ${sanitize(entry.rationale)} | ${entry.cases.length} |`);
     }
     lines.push('');
   }
@@ -92,7 +97,7 @@ export function renderReport(data: ReportData): string {
     for (const name of data.authorFailures) lines.push(`- ${sanitize(name)}`);
     lines.push('');
   }
-  const rejected = data.decisions.flatMap((entry) => entry.rejected.map((item) => `\`${entry.file}\`: ${sanitize(item.case)}: ${sanitize(item.reason)}`));
+  const rejected = data.decisions.flatMap((entry) => entry.rejected.map((item) => `${code(entry.file)}: ${sanitize(item.case)}: ${sanitize(item.reason)}`));
   if (rejected.length > 0) {
     lines.push('**Tests the agent dropped after three failed attempts:**', '');
     for (const item of rejected) lines.push(`- ${item}`);
@@ -106,7 +111,7 @@ export function renderReport(data: ReportData): string {
   if (data.mutation && data.mutation.rows.length > 0) {
     lines.push('| Mutation score (changed files) | Before | After |', '|---|---|---|');
     for (const row of data.mutation.rows) {
-      lines.push(`| \`${row.file}\` | ${percent(row.scoreBefore)} (${row.before.detected}/${row.before.valid}) | ${percent(row.scoreAfter)} (${row.after.detected}/${row.after.valid}) |`);
+      lines.push(`| ${code(row.file)} | ${percent(row.scoreBefore)} (${row.before.detected}/${row.before.valid}) | ${percent(row.scoreAfter)} (${row.after.detected}/${row.after.valid}) |`);
     }
     lines.push('');
   } else if (data.mutation?.reason) {
@@ -114,7 +119,7 @@ export function renderReport(data: ReportData): string {
   }
   if (data.codeDecisions.length > 0) {
     lines.push('<details><summary>Skipped before the model (filter, deleted, over budget)</summary>', '');
-    for (const item of data.codeDecisions) lines.push(`- \`${item.file}\`: ${item.reason}, ${item.detail}`);
+    for (const item of data.codeDecisions) lines.push(`- ${code(item.file)}: ${item.reason}, ${item.detail}`);
     lines.push('', '</details>', '');
   }
   if (data.runUrl) lines.push(`[Workflow run](${data.runUrl})`);

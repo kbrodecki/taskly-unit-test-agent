@@ -22,29 +22,46 @@ export function checkPromised(decisions: ReadonlyArray<{ file: string; decision:
   return gate('G0', 'Every create or update decision has its test file in the change', missing.map((entry) => `${entry.file}: ${entry.decision} promised ${entry.testFile}, which the change does not contain`));
 }
 
-const ALLOWED_PATHS = [/\.test\.tsx?$/, /^frontend\/src\/test\//, /^backend\/tests\//];
+const ALLOWED_PATHS = [/^(?:backend|frontend)\/.+\.test\.tsx?$/, /^frontend\/src\/test\//, /^backend\/tests\//];
+
+const allowed = (path: string) => ALLOWED_PATHS.some((pattern) => pattern.test(path));
 
 export function checkPaths(diffs: FileDiff[]): GateResult {
-  const outside = diffs.map((diff) => diff.path).filter((path) => !ALLOWED_PATHS.some((pattern) => pattern.test(path)));
+  const paths = diffs.flatMap((diff) => (diff.oldPath ? [diff.oldPath, diff.path] : [diff.path]));
+  const outside = [...new Set(paths)].filter((path) => !allowed(path));
   return gate('G1', 'Only test files and test fixtures changed', outside.map((path) => `${path} is outside the allowed paths`));
 }
 
 const BANNED = [
-  [/\b(?:it|test|describe)\.(?:skip|only|todo|fails)\b/, 'skipped, focused, todo or expected-to-fail test'],
+  [/\b(?:it|test|describe|suite)(?:\.\w+)*\.(?:skip|only|todo|fails|skipIf|runIf)\b/, 'skipped, focused, todo, conditional or expected-to-fail test'],
+  [/\b\w+\.skip\(\s*\)/, 'test skipped at run time'],
   [/\b(?:xit|xtest|xdescribe|fit|fdescribe)\(/, 'skipped or focused test'],
   [/@ts-(?:ignore|expect-error|nocheck)/, 'type check suppression'],
   [/eslint-disable/, 'lint suppression'],
 ] as const;
 
 const IMPORT_LINE = /^\s*(import\b|\} from |from )/;
+const SPECIFIER = /(?:from\s+|^\s*import\s+)['"]([^'"]+)['"]/;
+
+// A removed import line is a reformatted import, not a removed dependency, only when the same
+// module is still imported by an added line (or, for the opening line of a multi-line import, when an import line was added).
+function keepsImport(line: string, added: string[]): boolean {
+  if (!IMPORT_LINE.test(line)) return false;
+  const specifier = SPECIFIER.exec(line)?.[1];
+  if (specifier === undefined) return added.some((item) => IMPORT_LINE.test(item));
+  return added.some((item) => SPECIFIER.exec(item)?.[1] === specifier);
+}
 
 export function guardDiff(diffs: FileDiff[]): GateResult {
   const problems: string[] = [];
-  for (const diff of diffs.filter((item) => ALLOWED_PATHS.some((pattern) => pattern.test(item.path)))) {
+  for (const diff of diffs.filter((item) => allowed(item.path) || (item.oldPath !== undefined && allowed(item.oldPath)))) {
     if (diff.isDeleted) {
       problems.push(`${diff.path}: deleting a test file is not allowed`);
       continue;
     }
+    if (diff.isRename) problems.push(`${diff.oldPath}: renaming or copying a test file is not allowed (to ${diff.path})`);
+    if (diff.isSymlink) problems.push(`${diff.path}: symbolic links are not allowed`);
+    else if (diff.modeChanged) problems.push(`${diff.path}: file mode changes are not allowed`);
     for (const line of diff.added) {
       for (const [pattern, label] of BANNED) {
         if (pattern.test(line)) problems.push(`${diff.path}: ${label}: ${line.trim()}`);
@@ -55,7 +72,7 @@ export function guardDiff(diffs: FileDiff[]): GateResult {
     for (const line of diff.removed) {
       const trimmed = line.trimEnd();
       const commaOnly = added.has(`${trimmed},`);
-      if (!IMPORT_LINE.test(line) && !commaOnly && trimmed.trim() !== '') {
+      if (!keepsImport(line, diff.added) && !commaOnly && trimmed.trim() !== '') {
         problems.push(`${diff.path}: existing line removed or changed: ${trimmed.trim()}`);
       }
     }

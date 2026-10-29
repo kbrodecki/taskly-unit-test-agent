@@ -34,6 +34,18 @@ describe('worktreePatch', () => {
     ]);
   });
 
+  it('ignores the .claude/ removal gh-aw stages before the agent starts', () => {
+    const { root } = repo();
+    mkdirSync(join(root, '.claude'));
+    writeFileSync(join(root, '.claude/settings.json'), '{}\n');
+    git(root, 'add', '.');
+    git(root, 'commit', '-q', '-m', 'claude config');
+    const head = git(root, 'rev-parse', 'HEAD').trim();
+    git(root, 'rm', '-q', '-r', '.claude');
+
+    expect(worktreePatch(root, head)).toBe('');
+  });
+
   it('is empty when nothing changed', () => {
     const { root, head } = repo();
 

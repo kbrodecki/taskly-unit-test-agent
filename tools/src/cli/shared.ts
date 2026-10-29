@@ -13,7 +13,8 @@ export function git(root: string, ...args: string[]): string {
 export function worktreePatch(root: string, base: string): string {
   const untracked = git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0').filter(Boolean);
   if (untracked.length > 0) git(root, 'add', '--intent-to-add', '--', ...untracked);
-  return git(root, 'diff', '--no-color', '-M', base);
+  // gh-aw removes .claude/ from the agent workspace before the agent starts; that deletion is not the agent's change.
+  return git(root, 'diff', '--no-color', '-M', base, '--', '.', ':(exclude).claude');
 }
 
 export function arg(name: string, fallback?: string): string {

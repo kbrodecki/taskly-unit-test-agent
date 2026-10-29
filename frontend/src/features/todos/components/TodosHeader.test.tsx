@@ -23,3 +23,31 @@ it('invokes creation when enabled and blocks it when disabled', async () => {
   await user.click(button)
   expect(onCreate).toHaveBeenCalledTimes(1)
 })
+
+it('shows the clear completed action only when a handler is given', async () => {
+  const user = userEvent.setup()
+  const onClearCompleted = vi.fn()
+  const { rerender } = render(
+    <TodosHeader disabled={false} onCreate={vi.fn()} />,
+  )
+  expect(
+    screen.queryByRole('button', { name: 'Clear completed' }),
+  ).not.toBeInTheDocument()
+  rerender(
+    <TodosHeader
+      disabled={false}
+      onCreate={vi.fn()}
+      onClearCompleted={onClearCompleted}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'Clear completed' }))
+  expect(onClearCompleted).toHaveBeenCalledTimes(1)
+  rerender(
+    <TodosHeader
+      disabled
+      onCreate={vi.fn()}
+      onClearCompleted={onClearCompleted}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'Clear completed' })).toBeDisabled()
+})

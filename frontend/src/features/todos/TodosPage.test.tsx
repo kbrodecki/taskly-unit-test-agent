@@ -19,6 +19,27 @@ vi.mock('./hooks/useUpdateTodoMutation', () => ({
 vi.mock('./components/TodosHeader', () => ({
   TodosHeader: () => <h1>Tasks</h1>,
 }))
+vi.mock('./components/ClearCompletedDialog', () => ({
+  ClearCompletedDialog: ({
+    onClose,
+    onCleared,
+  }: {
+    onClose: () => void
+    onCleared: (deleted: number) => void
+  }) => (
+    <div role="dialog">
+      <button type="button" onClick={onClose}>
+        Close clear
+      </button>
+      <button type="button" onClick={() => onCleared(1)}>
+        Cleared one
+      </button>
+      <button type="button" onClick={() => onCleared(3)}>
+        Cleared three
+      </button>
+    </div>
+  ),
+}))
 vi.mock('./components/TodoFilters', () => ({ TodoFilters: () => null }))
 vi.mock('./components/TodoList', () => ({ TodoList: () => <p>Task list</p> }))
 vi.mock('./components/TodoEditor', () => ({ TodoEditor: () => null }))
@@ -26,6 +47,16 @@ vi.mock('./components/DeleteTodoDialog', () => ({
   DeleteTodoDialog: () => null,
 }))
 vi.mock('../../components/SuccessNotice', () => ({ SuccessNotice: () => null }))
+vi.mock('./components/TodosHeader', () => ({
+  TodosHeader: ({ onClearCompleted }: { onClearCompleted: () => void }) => (
+    <>
+      <h1>Tasks</h1>
+      <button type="button" onClick={onClearCompleted}>
+        Open clear
+      </button>
+    </>
+  ),
+}))
 
 it('displays a query failure and resets mutation errors before retrying', async () => {
   const user = userEvent.setup()
@@ -66,3 +97,60 @@ it('displays a query failure and resets mutation errors before retrying', async 
     refetch.mock.invocationCallOrder[0],
   )
 })
+
+function mockPage(notify: () => void) {
+  vi.mocked(useTodosQuery).mockReturnValue({
+    data: [],
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  } as unknown as ReturnType<typeof useTodosQuery>)
+  vi.mocked(useUpdateTodoMutation).mockReturnValue({
+    error: null,
+    reset: vi.fn(),
+    mutateAsync: vi.fn(),
+  } as unknown as ReturnType<typeof useUpdateTodoMutation>)
+  vi.mocked(useTodosBusy).mockReturnValue(false)
+  vi.mocked(useNotice).mockReturnValue({ message: '', notify })
+  vi.mocked(useTodoFilters).mockReturnValue({
+    filter: 'all',
+    search: '',
+    sort: 'newest',
+    visible: [],
+    setFilter: vi.fn(),
+    setSearch: vi.fn(),
+    setSort: vi.fn(),
+  })
+}
+
+it('opens the clear confirmation and closes it on cancel', async () => {
+  const user = userEvent.setup()
+  const notify = vi.fn()
+  mockPage(notify)
+  render(<TodosPage />)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Open clear' }))
+  expect(screen.getByRole('dialog')).toBeVisible()
+  await user.click(screen.getByRole('button', { name: 'Close clear' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(notify).not.toHaveBeenCalled()
+})
+
+it.each([
+  [1, 'Cleared one', '1 completed task cleared.'],
+  [3, 'Cleared three', '3 completed tasks cleared.'],
+])(
+  'closes the confirmation and announces %i cleared tasks',
+  async (_count, button, message) => {
+    const user = userEvent.setup()
+    const notify = vi.fn()
+    mockPage(notify)
+    render(<TodosPage />)
+    await user.click(screen.getByRole('button', { name: 'Open clear' }))
+    await user.click(screen.getByRole('button', { name: button }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(notify).toHaveBeenCalledWith(message)
+  },
+)

@@ -22,6 +22,15 @@ describe('todo validation', () => {
     { title: 'Task', due_date: '2026-10-15T12:00:00Z' }, { title: 'Task', completed: 'true' },
     { title: 'Task', completed: 1 }, { title: 'Task', id: 1 }, { title: null },
   ])('rejects invalid create input: %j', (input) => expect(createSchema.safeParse(input).success).toBe(false));
+  it('accepts a title of exactly 80 characters and trims it before measuring', () => {
+    expect(createSchema.parse({ title: 'x'.repeat(80) }).title).toBe('x'.repeat(80));
+    expect(createSchema.parse({ title: `  ${'x'.repeat(80)}  ` }).title).toBe('x'.repeat(80));
+    expect(updateSchema.parse({ title: 'x'.repeat(80) })).toEqual({ title: 'x'.repeat(80) });
+  });
+  it('rejects a title longer than 80 characters on create and update', () => {
+    expect(createSchema.safeParse({ title: 'x'.repeat(81) }).success).toBe(false);
+    expect(updateSchema.safeParse({ title: 'x'.repeat(81) }).success).toBe(false);
+  });
   it('rejects empty patches', () => {
     expect(() => updateSchema.parse({})).toThrow('Provide at least one field');
   });

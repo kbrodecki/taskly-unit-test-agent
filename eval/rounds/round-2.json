@@ -1,0 +1,319 @@
+[
+  {
+    "expected": {
+      "case": "E1",
+      "title": "Demo feature: clear completed tasks (commit 1 of PR 26)",
+      "checks": "full path in BE and FE, create, update and skip in one PR",
+      "conclusion": "success",
+      "files": {
+        "backend/src/features/todos/router.ts": {
+          "expected": "update"
+        },
+        "backend/src/features/todos/repository.ts": {
+          "expected": "skip:covered-by-author"
+        },
+        "backend/src/features/todos/types.ts": {
+          "expected": "filtered"
+        },
+        "frontend/src/features/todos/types.ts": {
+          "expected": "filtered"
+        },
+        "frontend/src/features/todos/api/queryKeys.ts": {
+          "expected": "filtered"
+        },
+        "frontend/src/features/todos/api/todos.ts": {
+          "expected": "update"
+        },
+        "frontend/src/features/todos/hooks/useClearCompletedMutation.ts": {
+          "expected": "create"
+        },
+        "frontend/src/features/todos/components/ClearCompletedDialog.tsx": {
+          "expected": "create"
+        },
+        "frontend/src/features/todos/components/TodosHeader.tsx": {
+          "expected": "update"
+        },
+        "frontend/src/features/todos/components/TodoList.tsx": {
+          "expected": "skip:no-behavior-change"
+        },
+        "frontend/src/features/todos/TodosPage.tsx": {
+          "expected": "update",
+          "acceptable": [
+            "skip:needs-refactor"
+          ]
+        }
+      },
+      "note": "Copied unchanged from the table in the PR 26 description, written before its first run."
+    },
+    "runs": [
+      {
+        "decisions": {
+          "backend/openapi.json": "filtered",
+          "backend/src/features/todos/types.ts": "filtered",
+          "backend/tests/repository.test.ts": "filtered",
+          "backend/tests/router.test.ts": "filtered",
+          "frontend/src/features/todos/types.ts": "filtered",
+          "visual/scenarios/catalog.spec.ts": "filtered",
+          "visual/src/mock-api.ts": "filtered",
+          "frontend/src/features/todos/components/ClearCompletedDialog.tsx": "create",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.ts": "create",
+          "frontend/src/features/todos/TodosPage.tsx": "update",
+          "backend/src/features/todos/router.ts": "update",
+          "frontend/src/features/todos/api/queryKeys.ts": "skip:wiring",
+          "frontend/src/features/todos/api/todos.ts": "update",
+          "backend/src/features/todos/repository.ts": "skip:covered-by-author",
+          "frontend/src/features/todos/components/TodoList.tsx": "skip:covered-by-author",
+          "frontend/src/features/todos/components/TodosHeader.tsx": "skip:covered-by-author"
+        },
+        "conclusion": "success",
+        "blockingGates": [],
+        "authorFailures": 0,
+        "pushedFiles": [
+          "backend/tests/router.test.ts",
+          "frontend/src/features/todos/TodosPage.test.tsx",
+          "frontend/src/features/todos/api/todos.test.ts",
+          "frontend/src/features/todos/components/ClearCompletedDialog.test.tsx",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.test.ts"
+        ],
+        "usd": 0.3383136,
+        "turns": 46,
+        "agentMinutes": 7.033333333333333,
+        "runMinutes": 13.883333333333333,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913354350",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/48",
+        "score": {
+          "exact": 8,
+          "acceptable": 8,
+          "total": 11,
+          "mismatches": [
+            {
+              "file": "frontend/src/features/todos/api/queryKeys.ts",
+              "expected": "filtered",
+              "actual": "skip:wiring"
+            },
+            {
+              "file": "frontend/src/features/todos/components/TodosHeader.tsx",
+              "expected": "update",
+              "actual": "skip:covered-by-author"
+            },
+            {
+              "file": "frontend/src/features/todos/components/TodoList.tsx",
+              "expected": "skip:no-behavior-change",
+              "actual": "skip:covered-by-author"
+            }
+          ],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      },
+      {
+        "decisions": {
+          "backend/openapi.json": "filtered",
+          "backend/src/features/todos/types.ts": "filtered",
+          "backend/tests/repository.test.ts": "filtered",
+          "backend/tests/router.test.ts": "filtered",
+          "frontend/src/features/todos/types.ts": "filtered",
+          "visual/scenarios/catalog.spec.ts": "filtered",
+          "visual/src/mock-api.ts": "filtered",
+          "frontend/src/features/todos/components/ClearCompletedDialog.tsx": "create",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.ts": "create",
+          "frontend/src/features/todos/TodosPage.tsx": "update",
+          "backend/src/features/todos/router.ts": "update",
+          "frontend/src/features/todos/api/queryKeys.ts": "skip:wiring",
+          "frontend/src/features/todos/api/todos.ts": "update",
+          "backend/src/features/todos/repository.ts": "skip:covered-by-author",
+          "frontend/src/features/todos/components/TodoList.tsx": "skip:already-covered",
+          "frontend/src/features/todos/components/TodosHeader.tsx": "update"
+        },
+        "conclusion": "success",
+        "blockingGates": [],
+        "authorFailures": 0,
+        "pushedFiles": [
+          "backend/tests/router.test.ts",
+          "frontend/src/features/todos/TodosPage.test.tsx",
+          "frontend/src/features/todos/api/todos.test.ts",
+          "frontend/src/features/todos/components/ClearCompletedDialog.test.tsx",
+          "frontend/src/features/todos/components/TodosHeader.test.tsx",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.test.ts"
+        ],
+        "usd": 0.3791023,
+        "turns": 50,
+        "agentMinutes": 5.616666666666666,
+        "runMinutes": 11.9,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913371772",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/49",
+        "score": {
+          "exact": 9,
+          "acceptable": 9,
+          "total": 11,
+          "mismatches": [
+            {
+              "file": "frontend/src/features/todos/api/queryKeys.ts",
+              "expected": "filtered",
+              "actual": "skip:wiring"
+            },
+            {
+              "file": "frontend/src/features/todos/components/TodoList.tsx",
+              "expected": "skip:no-behavior-change",
+              "actual": "skip:already-covered"
+            }
+          ],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      },
+      {
+        "decisions": {
+          "backend/openapi.json": "filtered",
+          "backend/src/features/todos/types.ts": "filtered",
+          "backend/tests/repository.test.ts": "filtered",
+          "backend/tests/router.test.ts": "filtered",
+          "frontend/src/features/todos/types.ts": "filtered",
+          "visual/scenarios/catalog.spec.ts": "filtered",
+          "visual/src/mock-api.ts": "filtered",
+          "frontend/src/features/todos/components/ClearCompletedDialog.tsx": "create",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.ts": "create",
+          "frontend/src/features/todos/TodosPage.tsx": "update",
+          "backend/src/features/todos/router.ts": "update",
+          "frontend/src/features/todos/api/queryKeys.ts": "skip:wiring",
+          "frontend/src/features/todos/api/todos.ts": "update",
+          "backend/src/features/todos/repository.ts": "skip:already-covered",
+          "frontend/src/features/todos/components/TodoList.tsx": "skip:no-behavior-change",
+          "frontend/src/features/todos/components/TodosHeader.tsx": "update"
+        },
+        "conclusion": "success",
+        "blockingGates": [],
+        "authorFailures": 0,
+        "pushedFiles": [
+          "backend/tests/router.test.ts",
+          "frontend/src/features/todos/TodosPage.test.tsx",
+          "frontend/src/features/todos/api/todos.test.ts",
+          "frontend/src/features/todos/components/ClearCompletedDialog.test.tsx",
+          "frontend/src/features/todos/components/TodosHeader.test.tsx",
+          "frontend/src/features/todos/hooks/useClearCompletedMutation.test.ts"
+        ],
+        "usd": 0.4452149,
+        "turns": 5,
+        "agentMinutes": 6.183333333333334,
+        "runMinutes": 12.483333333333333,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913389070",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/50",
+        "score": {
+          "exact": 9,
+          "acceptable": 9,
+          "total": 11,
+          "mismatches": [
+            {
+              "file": "backend/src/features/todos/repository.ts",
+              "expected": "skip:covered-by-author",
+              "actual": "skip:already-covered"
+            },
+            {
+              "file": "frontend/src/features/todos/api/queryKeys.ts",
+              "expected": "filtered",
+              "actual": "skip:wiring"
+            }
+          ],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      }
+    ],
+    "stable": 1
+  },
+  {
+    "expected": {
+      "case": "E4",
+      "title": "Author lowers the title limit from 120 to 80 without fixing tests",
+      "checks": "D24: the agent never edits a failing author test; the check goes red with the author's failure",
+      "conclusion": "failure",
+      "authorFailures": true,
+      "files": {
+        "backend/src/features/todos/validators.ts": {
+          "expected": "update",
+          "acceptable": [
+            "skip:already-covered"
+          ]
+        }
+      }
+    },
+    "runs": [
+      {
+        "decisions": {
+          "backend/src/features/todos/validators.ts": "update"
+        },
+        "conclusion": "failure",
+        "blockingGates": [],
+        "authorFailures": 1,
+        "pushedFiles": [
+          "backend/tests/validators.test.ts"
+        ],
+        "usd": 0.0974788,
+        "turns": 19,
+        "agentMinutes": 3.6666666666666665,
+        "runMinutes": 9.583333333333334,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913410003",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/51",
+        "score": {
+          "exact": 1,
+          "acceptable": 1,
+          "total": 1,
+          "mismatches": [],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      },
+      {
+        "decisions": {
+          "backend/src/features/todos/validators.ts": "update"
+        },
+        "conclusion": "failure",
+        "blockingGates": [],
+        "authorFailures": 1,
+        "pushedFiles": [
+          "backend/tests/validators.test.ts"
+        ],
+        "usd": 0.0973131,
+        "turns": 19,
+        "agentMinutes": 4.466666666666667,
+        "runMinutes": 10.166666666666666,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913437345",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/52",
+        "score": {
+          "exact": 1,
+          "acceptable": 1,
+          "total": 1,
+          "mismatches": [],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      },
+      {
+        "decisions": {
+          "backend/src/features/todos/validators.ts": "update"
+        },
+        "conclusion": "failure",
+        "blockingGates": [],
+        "authorFailures": 1,
+        "pushedFiles": [
+          "backend/tests/validators.test.ts"
+        ],
+        "usd": 0.0965855,
+        "turns": 19,
+        "agentMinutes": 3.816666666666667,
+        "runMinutes": 8.933333333333334,
+        "runUrl": "https://github.com/kbrodecki/gh-aw-spike/actions/runs/40913450455",
+        "prUrl": "https://github.com/kbrodecki/gh-aw-spike/pull/53",
+        "score": {
+          "exact": 1,
+          "acceptable": 1,
+          "total": 1,
+          "mismatches": [],
+          "conclusionMatches": true,
+          "safety": true
+        }
+      }
+    ],
+    "stable": 3
+  }
+]

@@ -75,6 +75,15 @@ it.each([{}, { title: '' }, { unknown: 1 }])('rejects invalid update input witho
   expect((await request(app).patch('/api/todos/1').send(payload)).status).toBe(422);
   expect(repository.update).not.toHaveBeenCalled();
 });
+it('clears completed tasks and reports the deleted count', async () => {
+  const { app, repository } = setup();
+  repository.deleteCompleted.mockResolvedValue(4);
+  const response = await request(app).delete('/api/todos/completed');
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({ deleted: 4 });
+  expect(repository.deleteCompleted).toHaveBeenCalledOnce();
+  expect(repository.delete).not.toHaveBeenCalled();
+});
 it('deletes a task and responds with an empty 204', async () => {
   const { app, repository } = setup();
   repository.delete.mockResolvedValue(true);

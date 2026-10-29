@@ -102,9 +102,14 @@ export function compareFailures(before: string[], after: string[]): { added: str
   return { added: after.filter((name) => !old.has(name)), existing: after.filter((name) => old.has(name)) };
 }
 
+// A file with nothing left to cover passes: line coverage cannot show the value of a new boundary test there.
 export function checkValue(files: string[], before: Coverage, after: Coverage): GateResult {
+  const fullyCovered = (file: string) => {
+    const hits = before.get(file);
+    return hits !== undefined && hits.size > 0 && [...hits.values()].every((count) => count > 0);
+  };
   const problems = files
-    .filter((file) => coveredCount(after.get(file)) <= coveredCount(before.get(file)))
+    .filter((file) => !fullyCovered(file) && coveredCount(after.get(file)) <= coveredCount(before.get(file)))
     .map((file) => `${file}: covered lines did not grow (${coveredCount(before.get(file))} before, ${coveredCount(after.get(file))} after)`);
   return gate('G7', 'Each create or update covers more lines', problems);
 }

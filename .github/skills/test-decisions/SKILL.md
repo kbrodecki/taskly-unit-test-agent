@@ -10,15 +10,15 @@ Decide once per file listed in `files` of `.unit-test-agent/input.json`. Code va
 
 - `testExists: false`: `create` or `skip`.
 - `testExists: true`: `update` or `skip`. Never `create`.
-- Prefer testing when `uncoveredChangedLines` is not empty. Full coverage does not force a skip: covered lines can still lack an assertion on the new behavior.
+- Prefer testing when `uncoveredChangedLines` is not empty. Full coverage does not force a skip: covered lines can still lack an assertion on the new behavior. A new prop, flag or condition that changes what is rendered or returned is a behavior change; check that some test asserts each new outcome before choosing a skip.
 
 ## Skip reasons (closed list)
 
 | Reason | Use when |
 |---|---|
-| `no-behavior-change` | The change is a rename, formatting, comment or type-only edit with no runtime effect. |
-| `already-covered` | Existing tests already assert the changed behavior. Not allowed while `uncoveredChangedLines` is not empty. |
-| `covered-by-author` | The author's tests in this change assert it. Not allowed while `uncoveredChangedLines` is not empty. |
+| `no-behavior-change` | The change does not alter what the code does: a rename, an extracted helper, formatting, a comment, a type-only edit, an equivalent expression. Prefer this over `already-covered` whenever the diff itself changes no behavior. |
+| `already-covered` | The behavior changed, and tests that existed before this change already assert the new behavior. Not allowed while `uncoveredChangedLines` is not empty. |
+| `covered-by-author` | The behavior changed, and test files the author changed in this same PR assert it. Name those test files in `rationale`. Tests written by the unit test agent in an earlier run are not the author's: use `already-covered`. Not allowed while `uncoveredChangedLines` is not empty. |
 | `wiring` | The file only connects other modules (exports, registration, composition) and has no logic of its own. |
 | `needs-refactor` | The behavior cannot be tested without changing production code. Say what blocks it in `rationale`; a human decides. |
 

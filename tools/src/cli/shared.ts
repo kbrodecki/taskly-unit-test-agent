@@ -32,7 +32,7 @@ export interface SuiteRun {
 
 export function runSuite(root: string, app: string, outDir: string, label: string, extra: string[] = []): SuiteRun {
   const resultFile = join(outDir, `${label}-${app}.json`);
-  const args = ['vitest', 'run', '--coverage', '--reporter=json', `--outputFile=${resultFile}`, ...extra];
+  const args = ['vitest', 'run', '--coverage', '--coverage.reportOnFailure', '--reporter=json', `--outputFile=${resultFile}`, ...extra];
   const run = spawnSync('npx', args, { cwd: join(root, app), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const json = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, 'utf8')) : { testResults: [] };
   const lcovFile = join(root, app, 'coverage', 'lcov.info');

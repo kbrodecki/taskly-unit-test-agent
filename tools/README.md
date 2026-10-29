@@ -23,7 +23,7 @@ Gates:
 | G4 | a test fails with the patch that did not fail without it, or a test file or suite fails to run |
 | G5 | new or changed test files fail one of five runs in shuffled order |
 | G6 | a new test only checks existence, truthiness or an HTTP status |
-| G7 | a file the agent created or updated tests for gains no covered lines |
+| G7 | a file the agent created or updated tests for gains no covered lines (files already fully covered pass) |
 
 Tests that already fail without the patch are reported as the author's, not as a gate failure.
 

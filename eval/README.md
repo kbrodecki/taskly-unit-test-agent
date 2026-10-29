@@ -15,7 +15,7 @@ The backfill run is reported separately: one run, reviewed by hand (D41).
 ## How it runs
 
 - Branch `eval/base` is a fixed commit of `main` (`9fe8f3d`, before the demo merge). Each case is one commit on top of it, and the same commit is pushed as three branches `eval/e<n>-r1`, `-r2`, `-r3`, each with its own PR into `eval/base`, label `eval`. PRs are closed without merge.
-- `npm run collect` (in `eval/`) reads every `eval` PR with `gh`: the first Unit Test Agent run, its artifacts (`input.json`, `gates.json`, `agent_usage.json`), the published check and the files of bot commits. It writes `results.json` and `results.md`.
+- `node src/collect.ts <repo> <round> <branch prefix> [cases]` (in `eval/`) reads every `eval` PR with `gh`: the first Unit Test Agent run, its artifacts (`input.json`, `gates.json`, `agent_usage.json`), the published check and the files of bot commits. It writes `rounds/<round>.json` and `rounds/<round>.md`.
 
 ## Metrics
 

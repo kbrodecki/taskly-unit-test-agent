@@ -5,6 +5,9 @@ import { join, resolve } from 'node:path';
 import { decisionMap, type ExpectedCase, type RunFacts, scoreRun, stability } from './score.ts';
 
 const repo = process.argv[2] ?? 'kbrodecki/gh-aw-spike';
+const round = process.argv[3] ?? 'round-1';
+const branchPrefix = process.argv[4] ?? 'eval/';
+const only = process.argv[5]?.split(',');
 const root = resolve(import.meta.dirname, '..');
 const gh = (...args: string[]) => execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 const ghJson = <T>(...args: string[]) => JSON.parse(gh(...args)) as T;
@@ -54,11 +57,11 @@ function facts(pull: Pull, run: Run) {
   return { ...result, usd: (usage?.ai_credits ?? 0) / 100, turns, agentMinutes: minutes(agentJob), runMinutes, runUrl: run.url, prUrl: pull.url };
 }
 
-const cases = readdirSync(join(root, 'expected')).filter((name) => name.endsWith('.json')).map((name) => readJson<ExpectedCase>(join(root, 'expected', name))!).sort((a, b) => a.case.localeCompare(b.case));
+const cases = readdirSync(join(root, 'expected')).filter((name) => name.endsWith('.json') && (!only || only.includes(name.slice(0, -5)))).map((name) => readJson<ExpectedCase>(join(root, 'expected', name))!).sort((a, b) => a.case.localeCompare(b.case));
 const pulls = ghJson<Pull[]>('pr', 'list', '--repo', repo, '--label', 'eval', '--state', 'all', '--limit', '100', '--json', 'number,headRefName,url');
 
 const results = cases.map((expected) => {
-  const own = pulls.filter((pull) => pull.headRefName.startsWith(`eval/${expected.case.toLowerCase()}-r`)).sort((a, b) => a.headRefName.localeCompare(b.headRefName));
+  const own = pulls.filter((pull) => pull.headRefName.startsWith(`${branchPrefix}${expected.case.toLowerCase()}-r`)).sort((a, b) => a.headRefName.localeCompare(b.headRefName));
   const runs = own.flatMap((pull) => {
     const list = ghJson<Run[]>('run', 'list', '--repo', repo, '--workflow', 'Unit Test Agent', '--branch', pull.headRefName, '--limit', '20', '--json', 'databaseId,createdAt,url');
     const first = list.sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
@@ -69,7 +72,7 @@ const results = cases.map((expected) => {
   return { expected, runs, stable: stability(runs.map((run) => run.decisions)) };
 });
 
-writeFileSync(join(root, 'results.json'), `${JSON.stringify(results, null, 2)}\n`);
+writeFileSync(join(root, 'rounds', `${round}.json`), `${JSON.stringify(results, null, 2)}\n`);
 
 const avg = (values: number[]) => (values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0);
 const lines = [
@@ -92,5 +95,5 @@ for (const { expected, runs } of results) {
     if (!run.score.conclusionMatches) lines.push(`- ${expected.case} run ${i + 1}: check \`${run.conclusion}\`, expected \`${expected.conclusion}\`${expected.authorFailures ? ' with author failures' : ''}`);
   });
 }
-writeFileSync(join(root, 'results.md'), `${lines.join('\n')}\n`);
+writeFileSync(join(root, 'rounds', `${round}.md`), `${lines.join('\n')}\n`);
 console.log(lines.join('\n'));

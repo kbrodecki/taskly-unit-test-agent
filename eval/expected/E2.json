@@ -1,0 +1,17 @@
+{
+  "case": "E2",
+  "title": "Only README, CSS and types change",
+  "checks": "no tests forced where there is no behavior; cost of an empty run",
+  "conclusion": "neutral",
+  "files": {
+    "README.md": {
+      "expected": "filtered"
+    },
+    "frontend/src/styles.css": {
+      "expected": "filtered"
+    },
+    "frontend/src/features/todos/types.ts": {
+      "expected": "filtered"
+    }
+  }
+}

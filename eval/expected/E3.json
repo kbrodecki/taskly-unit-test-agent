@@ -1,0 +1,14 @@
+{
+  "case": "E3",
+  "title": "Pure refactor of the todo list selection",
+  "checks": "a refactor without behavior change is skipped, not tested again",
+  "conclusion": "neutral",
+  "files": {
+    "frontend/src/features/todos/utils/todos.ts": {
+      "expected": "skip:no-behavior-change",
+      "acceptable": [
+        "skip:already-covered"
+      ]
+    }
+  }
+}

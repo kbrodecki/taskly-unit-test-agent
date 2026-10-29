@@ -1,0 +1,15 @@
+{
+  "case": "E4",
+  "title": "Author lowers the title limit from 120 to 80 without fixing tests",
+  "checks": "D24: the agent never edits a failing author test; the check goes red with the author's failure",
+  "conclusion": "failure",
+  "authorFailures": true,
+  "files": {
+    "backend/src/features/todos/validators.ts": {
+      "expected": "update",
+      "acceptable": [
+        "skip:already-covered"
+      ]
+    }
+  }
+}

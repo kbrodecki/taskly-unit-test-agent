@@ -1,0 +1,45 @@
+{
+  "case": "E1",
+  "title": "Demo feature: clear completed tasks (commit 1 of PR 26)",
+  "checks": "full path in BE and FE, create, update and skip in one PR",
+  "conclusion": "success",
+  "files": {
+    "backend/src/features/todos/router.ts": {
+      "expected": "update"
+    },
+    "backend/src/features/todos/repository.ts": {
+      "expected": "skip:covered-by-author"
+    },
+    "backend/src/features/todos/types.ts": {
+      "expected": "filtered"
+    },
+    "frontend/src/features/todos/types.ts": {
+      "expected": "filtered"
+    },
+    "frontend/src/features/todos/api/queryKeys.ts": {
+      "expected": "filtered"
+    },
+    "frontend/src/features/todos/api/todos.ts": {
+      "expected": "update"
+    },
+    "frontend/src/features/todos/hooks/useClearCompletedMutation.ts": {
+      "expected": "create"
+    },
+    "frontend/src/features/todos/components/ClearCompletedDialog.tsx": {
+      "expected": "create"
+    },
+    "frontend/src/features/todos/components/TodosHeader.tsx": {
+      "expected": "update"
+    },
+    "frontend/src/features/todos/components/TodoList.tsx": {
+      "expected": "skip:no-behavior-change"
+    },
+    "frontend/src/features/todos/TodosPage.tsx": {
+      "expected": "update",
+      "acceptable": [
+        "skip:needs-refactor"
+      ]
+    }
+  },
+  "note": "Copied unchanged from the table in the PR 26 description, written before its first run."
+}

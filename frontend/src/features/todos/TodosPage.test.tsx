@@ -2,6 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { useNotice } from '../../hooks/useNotice'
+import { todoFixture } from '../../test/todoFixture'
+import { TodosHeader } from './components/TodosHeader'
 import { useTodoFilters } from './hooks/useTodoFilters'
 import { useTodosBusy } from './hooks/useTodosBusy'
 import { useTodosQuery } from './hooks/useTodosQuery'
@@ -40,6 +42,16 @@ vi.mock('./components/TodosHeader', () => ({
       <h1>Tasks</h1>
       <button onClick={onClearCompleted}>Open clear</button>
     </>
+  ),
+}))
+vi.mock('./components/TodosHeader', () => ({
+  TodosHeader: vi.fn(
+    ({ onClearCompleted }: { onClearCompleted: () => void }) => (
+      <>
+        <h1>Tasks</h1>
+        <button onClick={onClearCompleted}>Open clear</button>
+      </>
+    ),
   ),
 }))
 vi.mock('./components/TodoFilters', () => ({ TodoFilters: () => null }))
@@ -116,6 +128,30 @@ function mockPage(notify: (message: string) => void) {
     setSort: vi.fn(),
   })
 }
+
+it('passes the number of completed tasks to the header', () => {
+  mockPage(vi.fn())
+  vi.mocked(useTodosQuery).mockReturnValue({
+    data: [
+      { ...todoFixture, id: 1, completed: true },
+      { ...todoFixture, id: 2, completed: false },
+      { ...todoFixture, id: 3, completed: true },
+    ],
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  } as unknown as ReturnType<typeof useTodosQuery>)
+  render(<TodosPage />)
+  expect(vi.mocked(TodosHeader).mock.lastCall?.[0].completedCount).toBe(2)
+})
+
+it('passes zero completed tasks to the header when there are no tasks', () => {
+  mockPage(vi.fn())
+  render(<TodosPage />)
+  expect(vi.mocked(TodosHeader).mock.lastCall?.[0].completedCount).toBe(0)
+})
 
 it('opens the clear completed dialog and closes it on cancel', async () => {
   const user = userEvent.setup()

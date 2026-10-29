@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
+import { Button } from '../../../design-system'
 import { useClearCompletedMutation } from '../hooks/useClearCompletedMutation'
 import { ClearCompletedDialog } from './ClearCompletedDialog'
 
@@ -82,6 +83,31 @@ it('stays open, shows the error and does not report when clearing fails', async 
   expect(
     screen.getByRole('dialog', { name: 'Clear completed tasks?' }),
   ).toBeVisible()
+})
+
+it.each([
+  ['the mutation is pending', true, false],
+  ['the page is busy', false, true],
+])('ignores a clear request while %s', (_, isPending, busy) => {
+  const mutateAsync = vi.fn()
+  const onCleared = vi.fn()
+  mockMutation(mutateAsync, { isPending })
+  vi.mocked(Button).mockClear()
+  render(
+    <ClearCompletedDialog
+      busy={busy}
+      onClose={vi.fn()}
+      onCleared={onCleared}
+    />,
+  )
+  const danger = vi
+    .mocked(Button)
+    .mock.calls.map(([props]) => props)
+    .find((props) => props.variant === 'danger')
+  danger?.onClick?.({} as never)
+  expect(danger).toBeDefined()
+  expect(mutateAsync).not.toHaveBeenCalled()
+  expect(onCleared).not.toHaveBeenCalled()
 })
 
 it.each([

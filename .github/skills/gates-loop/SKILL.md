@@ -18,6 +18,7 @@ To run one test file while fixing it: `npm --prefix backend test -- tests/<name>
 | Gate | What to do |
 |---|---|
 | decisions | Fix `decisions.json` to match the `test-decisions` skill. |
+| G0 | A `create` or `update` decision names a test file you did not change. Write the tests, or change the decision. |
 | G1 | You changed a file outside the test paths. Undo that change. |
 | G2 | You changed or removed an existing test line, or used a skip, focus or suppression. Restore the original lines; add new tests instead. |
 | G3 | Fix the type error, or add a real `expect(...).<matcher>(...)` to the named test. |

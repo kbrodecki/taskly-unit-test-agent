@@ -51,16 +51,17 @@ async function commitFiles({ github, context, prefix, files, message }) {
   return commit.sha;
 }
 
-function render({ shots, videos, url, runUrl, has }) {
-  const image = (side, id, alt) => (has(side, `${id}.png`) ? `<img src="${url(side, `${id}.png`)}" alt="${alt}" width="420">` : '_none_');
+function render({ shots, videos, url, runUrl, has, privateRepo }) {
+  const image = (side, id, alt) => (has(side, `${id}.png`) ? `<a href="${url(side, `${id}.png`)}"><img src="${url(side, `${id}.png`)}" alt="${alt}" width="420"></a>` : '_none_');
   const changed = shots.filter((shot) => shot.status !== 'unchanged');
   const unchanged = shots.filter((shot) => shot.status === 'unchanged');
   const lines = [MARKER, '## Visual evidence', ''];
   lines.push(`Screens from the scenario catalog in \`visual/scenarios/\`, rendered on the base and on this PR with the API mocked. [Run](${runUrl})`, '');
+  if (privateRepo) lines.push('> In a private repository GitHub does not show these images inline; click an image or link to open it.', '');
   for (const id of videos) {
     lines.push(`### Video: \`${id}\``, '');
-    if (has('after', `${id}.gif`)) lines.push(`<img src="${url('after', `${id}.gif`)}" alt="${id} recording" width="840">`, '');
-    lines.push(`[Full video (webm)](${url('after', `${id}.webm`)})`, '');
+    if (has('after', `${id}.gif`)) lines.push(`<a href="${url('after', `${id}.gif`)}"><img src="${url('after', `${id}.gif`)}" alt="${id} recording" width="840"></a>`, '');
+    lines.push(`[GIF](${url('after', `${id}.gif`)}) · [Full video (webm)](${url('after', `${id}.webm`)})`, '');
   }
   if (changed.length === 0) lines.push('No screen changed.', '');
   else {
@@ -92,7 +93,7 @@ module.exports = async function publishVisual({ github, context, core, dir }) {
   const names = new Set(files.map((item) => `${item.side}/${item.name}`));
   const has = (side, name) => names.has(`${side}/${name}`);
   const url = (side, name) => `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/blob/${commit}/${prefix}/${side}/${name}?raw=true`;
-  const body = render({ shots, videos, url, runUrl, has });
+  const body = render({ shots, videos, url, runUrl, has, privateRepo: Boolean(context.payload.repository && context.payload.repository.private) });
 
   const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: pull.number, per_page: 100 });
   const existing = comments.find((comment) => comment.body && comment.body.includes(MARKER));

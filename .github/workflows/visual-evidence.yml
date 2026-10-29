@@ -1,0 +1,110 @@
+name: Visual evidence
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - "frontend/src/**"
+      - "!frontend/src/**/*.test.ts"
+      - "!frontend/src/**/*.test.tsx"
+      - "!frontend/src/test/**"
+      - "visual/**"
+
+permissions: {}
+
+concurrency:
+  group: visual-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  capture:
+    if: github.event.action != 'labeled' || github.event.label.name == 'visual-video'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: head
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Build the base and head frontends
+        run: |
+          npm ci --prefix base/frontend
+          npm --prefix base/frontend exec -- vite build
+          npm ci --prefix head/frontend
+          npm --prefix head/frontend exec -- vite build
+      - name: Install Playwright
+        working-directory: head/visual
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Capture the base
+        working-directory: head/visual
+        continue-on-error: true
+        run: npx playwright test
+        env:
+          FRONTEND_DIST: ${{ github.workspace }}/base/frontend/dist
+          VISUAL_OUT: ${{ github.workspace }}/out/before
+      - name: Capture the head
+        working-directory: head/visual
+        run: npx playwright test
+        env:
+          FRONTEND_DIST: ${{ github.workspace }}/head/frontend/dist
+          VISUAL_OUT: ${{ github.workspace }}/out/after
+      - name: Record video
+        if: contains(github.event.pull_request.labels.*.name, 'visual-video')
+        working-directory: head/visual
+        run: |
+          npx playwright test --grep @video --pass-with-no-tests
+          sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
+          for video in "$GITHUB_WORKSPACE"/out/after/*.webm; do
+            [ -e "$video" ] || continue
+            ffmpeg -loglevel error -y -i "$video" -vf "fps=10,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 "${video%.webm}.gif"
+          done
+        env:
+          FRONTEND_DIST: ${{ github.workspace }}/head/frontend/dist
+          VISUAL_OUT: ${{ github.workspace }}/out/after
+          VISUAL_VIDEO: "1"
+      - name: Compare
+        working-directory: head/visual
+        run: node src/compare.ts "$GITHUB_WORKSPACE/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: visual-evidence
+          path: out/
+          retention-days: 14
+
+  publish:
+    needs: capture
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: visual-evidence
+          path: out
+      - name: Publish to the visual-evidence branch and comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const publishVisual = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-visual.cjs`);
+            await publishVisual({ github, context, core, dir: `${process.env.GITHUB_WORKSPACE}/out` });

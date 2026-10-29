@@ -101,4 +101,19 @@ describe('renderReport', () => {
       '**The agent output broke the decision contract, so nothing was pushed:**\n\n- backend/src/a.ts: missing decision',
     );
   });
+
+  it('shows mutation scores of changed files before and after', () => {
+    const mutation = {
+      rows: [{ file: 'backend/src/factory.ts', scoreBefore: 40, scoreAfter: 80, before: { detected: 4, valid: 10 }, after: { detected: 8, valid: 10 } }],
+    };
+    expect(renderReport({ ...base, mutation })).toContain(
+      '| Mutation score (changed files) | Before | After |\n|---|---|---|\n| `backend/src/factory.ts` | 40.0% (4/10) | 80.0% (8/10) |',
+    );
+  });
+
+  it('says why mutation score is missing', () => {
+    const report = renderReport({ ...base, mutation: { rows: [], reason: 'backend: There were failed tests in the initial test run.' } });
+    expect(report).toContain('Mutation score not measured: backend: There were failed tests in the initial test run. G7 used line coverage only.');
+    expect(renderReport(base)).not.toContain('Mutation score');
+  });
 });

@@ -1,7 +1,9 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { type Coverage, mergeCoverage, parseLcov } from '../lines.ts';
+import { type Mutation, type MutationRun, parseMutationReport, strykerConfig } from '../mutation.ts';
 import { failedTests } from '../vitest-results.ts';
 
 export const APPS = ['backend', 'frontend'] as const;
@@ -47,6 +49,32 @@ export function runAll(root: string, outDir: string, label: string): SuiteRun {
     coverage: mergeCoverage(...runs.map((run) => run.coverage)),
     ok: runs.every((run) => run.ok),
   };
+}
+
+const STRYKER = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', '.bin', 'stryker');
+
+// Stryker's vitest runner loads vitest from tools/node_modules, so tools pins the same vitest version as the apps.
+export function runMutation(root: string, app: string, files: string[], outDir: string, label: string, timeoutMs: number): MutationRun {
+  if (files.length === 0) return { counts: new Map() };
+  if (timeoutMs <= 0) return { reason: 'time budget used up' };
+  const reportFile = join(outDir, `mutation-${label}-${app}.json`);
+  const configFile = join(outDir, `stryker-${label}-${app}.json`);
+  const tempDir = join(process.env.RUNNER_TEMP ?? process.env.TMPDIR ?? '/tmp', `stryker-${label}-${app}`);
+  writeJson(configFile, strykerConfig(files, reportFile, tempDir, Math.max(1, Math.floor(timeoutMs / 60000))));
+  const run = spawnSync(STRYKER, ['run', configFile], { cwd: join(root, app), encoding: 'utf8', timeout: timeoutMs, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
+  if ((run.error as NodeJS.ErrnoException | undefined)?.code === 'ETIMEDOUT') return { reason: `${app}: over the time budget` };
+  if (run.status !== 0 || !existsSync(reportFile)) {
+    const output = `${run.stdout ?? ''}${run.stderr ?? ''}`.replace(/\x1b\[[0-9;]*m/g, '');
+    const error = output.split('\n').find((line) => / ERROR /.test(line))?.replace(/^.* ERROR \S+\s*/, '');
+    return { reason: `${app}: ${error ?? `stryker exited with ${run.status}`}` };
+  }
+  return { counts: parseMutationReport(readJson(reportFile), app) };
+}
+
+export function mergeMutation(runs: MutationRun[]): MutationRun {
+  const failed = runs.find((run) => !run.counts);
+  if (failed) return failed;
+  return { counts: new Map(runs.flatMap((run) => [...(run.counts as Mutation)])) };
 }
 
 export function serializeCoverage(coverage: Coverage): Record<string, Array<[number, number]>> {

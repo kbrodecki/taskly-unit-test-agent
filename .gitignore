@@ -28,4 +28,3 @@ coverage/
 # Visual evidence output
 visual/out/
 visual/test-results/
-eval/node_modules/

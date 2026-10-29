@@ -21,9 +21,10 @@ const data: ReportData = {
   gates: gates.gates,
   authorFailures: gates.authorFailures,
   coverage: gates.coverage,
-  runUrl: process.env.RUN_URL,
+  runUrl: process.env.RUN_URL ?? (process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : undefined),
 };
 writeFileSync(outFile, renderReport(data));
 const result = conclusion(data);
+writeFileSync(join(dir, 'conclusion.txt'), `${result}\n`);
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `conclusion=${result}\n`);
 console.log(result);

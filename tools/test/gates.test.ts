@@ -163,6 +163,18 @@ describe('G7 checkValue', () => {
     const before = new Map([['backend/src/c.ts', new Map([[1, 2]])]]);
     expect(checkValue(['backend/src/c.ts'], before, before).status).toBe('pass');
   });
+
+  it('passes a file whose coverage did not grow when the new tests detect more mutants', () => {
+    const coverage = new Map([['backend/src/a.ts', new Map([[1, 0], [2, 1]])], ['backend/src/b.ts', new Map([[1, 0], [2, 1]])]]);
+    const counts = (detected: number) => ({ detected, survived: 10 - detected, noCoverage: 0, valid: 10 });
+    const mutation = [
+      { file: 'backend/src/a.ts', before: counts(4), after: counts(6) },
+      { file: 'backend/src/b.ts', before: counts(4), after: counts(4) },
+    ];
+    const result = checkValue(['backend/src/a.ts', 'backend/src/b.ts'], coverage, coverage, mutation);
+    expect(result.name).toBe('Each create or update covers more lines or detects more mutants');
+    expect(result.details).toEqual(['backend/src/b.ts: covered lines did not grow (1 before, 1 after) and no more mutants detected']);
+  });
 });
 
 describe('checkPromised', () => {

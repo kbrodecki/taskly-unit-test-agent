@@ -20,7 +20,13 @@ export interface ReportData {
   gates: GateResult[];
   authorFailures: string[];
   coverage: CoverageRow[];
+  mutation?: MutationSummary;
   runUrl?: string;
+}
+
+export interface MutationSummary {
+  rows: Array<{ file: string; scoreBefore: number; scoreAfter: number; before: { detected: number; valid: number }; after: { detected: number; valid: number } }>;
+  reason?: string;
 }
 
 export function sanitize(text: string, max = 300): string {
@@ -96,6 +102,15 @@ export function renderReport(data: ReportData): string {
     lines.push('| Line coverage | Before | After |', '|---|---|---|');
     for (const row of data.coverage) lines.push(`| ${row.area} | ${percent(row.before)} | ${percent(row.after)} |`);
     lines.push('');
+  }
+  if (data.mutation && data.mutation.rows.length > 0) {
+    lines.push('| Mutation score (changed files) | Before | After |', '|---|---|---|');
+    for (const row of data.mutation.rows) {
+      lines.push(`| \`${row.file}\` | ${percent(row.scoreBefore)} (${row.before.detected}/${row.before.valid}) | ${percent(row.scoreAfter)} (${row.after.detected}/${row.after.valid}) |`);
+    }
+    lines.push('');
+  } else if (data.mutation?.reason) {
+    lines.push(`Mutation score not measured: ${sanitize(data.mutation.reason).replace(/[.:]$/, '')}. G7 used line coverage only.`, '');
   }
   if (data.codeDecisions.length > 0) {
     lines.push('<details><summary>Skipped before the model (filter, deleted, over budget)</summary>', '');

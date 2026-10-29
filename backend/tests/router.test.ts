@@ -83,6 +83,15 @@ it('deletes a task and responds with an empty 204', async () => {
   expect(response.text).toBe('');
   expect(repository.delete).toHaveBeenCalledWith(3);
 });
+it('clears completed tasks and reports the count without treating completed as an id', async () => {
+  const { app, repository } = setup();
+  repository.deleteCompleted.mockResolvedValue(2);
+  const response = await request(app).delete('/api/todos/completed');
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({ deleted: 2 });
+  expect(repository.deleteCompleted).toHaveBeenCalledOnce();
+  expect(repository.delete).not.toHaveBeenCalled();
+});
 it('returns 404 when deleting a missing task', async () => {
   const { app, repository } = setup();
   repository.delete.mockResolvedValue(false);

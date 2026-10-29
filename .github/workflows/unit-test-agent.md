@@ -77,7 +77,7 @@ jobs:
   gates:
     needs: [agent, detection]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -104,7 +104,7 @@ jobs:
       - name: Run gates G1 to G7
         run: |
           patch="$(find /tmp/agent-artifact -maxdepth 1 -name 'aw-*.patch' | head -n 1)"
-          node tools/src/cli/gates.ts --patch "$patch"
+          node tools/src/cli/gates.ts --patch "$patch" --mutation --mutation-minutes 8
       - name: Upload gate results
         if: always()
         uses: actions/upload-artifact@v7

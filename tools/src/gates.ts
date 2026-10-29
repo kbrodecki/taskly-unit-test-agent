@@ -1,4 +1,5 @@
 import { type Coverage, coveredCount } from './lines.ts';
+import type { MutationRow } from './mutation.ts';
 import type { FileDiff } from './patch.ts';
 import { findTests, type TestCase } from './test-ast.ts';
 
@@ -103,13 +104,18 @@ export function compareFailures(before: string[], after: string[]): { added: str
 }
 
 // A file with nothing left to cover passes: line coverage cannot show the value of a new boundary test there.
-export function checkValue(files: string[], before: Coverage, after: Coverage): GateResult {
+// When mutation results exist, more detected mutants is an alternative proof of value.
+export function checkValue(files: string[], before: Coverage, after: Coverage, mutation: MutationRow[] = []): GateResult {
   const fullyCovered = (file: string) => {
     const hits = before.get(file);
     return hits !== undefined && hits.size > 0 && [...hits.values()].every((count) => count > 0);
   };
+  const moreDetected = (file: string) => {
+    const row = mutation.find((item) => item.file === file);
+    return row !== undefined && row.after.detected > row.before.detected;
+  };
   const problems = files
-    .filter((file) => !fullyCovered(file) && coveredCount(after.get(file)) <= coveredCount(before.get(file)))
-    .map((file) => `${file}: covered lines did not grow (${coveredCount(before.get(file))} before, ${coveredCount(after.get(file))} after)`);
-  return gate('G7', 'Each create or update covers more lines', problems);
+    .filter((file) => !fullyCovered(file) && !moreDetected(file) && coveredCount(after.get(file)) <= coveredCount(before.get(file)))
+    .map((file) => `${file}: covered lines did not grow (${coveredCount(before.get(file))} before, ${coveredCount(after.get(file))} after)${mutation.some((item) => item.file === file) ? ' and no more mutants detected' : ''}`);
+  return gate('G7', mutation.length > 0 ? 'Each create or update covers more lines or detects more mutants' : 'Each create or update covers more lines', problems);
 }

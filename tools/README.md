@@ -8,7 +8,7 @@ Run the commands from the repository root (`node tools/src/cli/...`); paths defa
 |---|---|
 | `node tools/src/cli/prepare.ts --mode pr --base <ref>` | Runs both suites with coverage, lists changed files, filters the ones that need no test, maps each source file to its test file and writes the agent input (`.unit-test-agent/input.json`) with uncovered changed lines. |
 | `node tools/src/cli/prepare.ts --mode backfill --limit 25` | Same input for the backfill mode: every source file with uncovered lines. |
-| `node tools/src/cli/gates.ts --patch <agent.patch>` | Validates `decisions.json` against the input, applies the agent patch and runs gates G1 to G7. Exits 1 when the patch must not be pushed. |
+| `node tools/src/cli/gates.ts --patch <agent.patch> [--mutation] [--mutation-minutes 8]` | Validates `decisions.json` against the input, applies the agent patch and runs gates G1 to G7. Exits 1 when the patch must not be pushed. With `--mutation` it also runs Stryker on up to four changed source files with a `create` or `update` decision, before and after the patch. |
 | `node tools/src/cli/gates.ts --worktree` | The agent's own check before it commits: the same gates on the working tree against the PR head recorded in `input.json`, two shuffled reruns, result in `gates-self.json`. |
 | `node tools/src/cli/report.ts` | Renders the PR comment from the input and the gate results and writes the check conclusion. |
 
@@ -23,8 +23,10 @@ Gates:
 | G4 | a test fails with the patch that did not fail without it, or a test file or suite fails to run |
 | G5 | new or changed test files fail one of five runs in shuffled order |
 | G6 | a new test only checks existence, truthiness or an HTTP status |
-| G7 | a file the agent created or updated tests for gains no covered lines (files already fully covered pass) |
+| G7 | a file the agent created or updated tests for gains no covered lines and, with `--mutation`, no detected mutants (files already fully covered pass) |
 
 Tests that already fail without the patch are reported as the author's, not as a gate failure.
+
+Mutation testing is a signal, never a blocker on its own. The report shows each mutated file's score before and after (killed and timed out mutants over valid ones). When Stryker cannot run, G7 falls back to line coverage and the report says why. This happens when a test already fails without the patch (Stryker refuses a red initial run), when the time budget runs out, or when the mutant counts of the two runs differ. It runs only in the gates job; the agent's `--worktree` self-check stays coverage only. Stryker's vitest runner loads `vitest` from `tools/node_modules`, so `tools` pins the same `vitest` version as the apps. Stryker's incremental mode is not used: both runs happen in one job, so there is nothing to reuse.
 
 Coverage comes from each app's `lcov`. A line counts as uncovered when it did not run, holds a function that never ran, or holds a branch never taken; a one-line route handler is otherwise "covered" as soon as the route is registered.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, guardDiff, lintTests, newTests } from '../src/gates.ts';
+import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, guardDiff, lintTests, lostTests, newTests } from '../src/gates.ts';
 import { parsePatch } from '../src/patch.ts';
 import { findTests } from '../src/test-ast.ts';
 
@@ -86,6 +86,39 @@ describe('parsePatch edge cases', () => {
   });
 });
 
+describe('parsePatch with quoted or unreadable headers', () => {
+  it('reads C-quoted paths and never credits a later section to the previous file', () => {
+    const patch = [
+      'diff --git a/backend/tests/a.test.ts b/backend/tests/a.test.ts',
+      'new file mode 100644',
+      '--- /dev/null',
+      '+++ b/backend/tests/a.test.ts',
+      '@@ -0,0 +1 @@',
+      '+test',
+      'diff --git "a/backend/src/caf\\303\\251.ts" "b/backend/src/caf\\303\\251.ts"',
+      '--- "a/backend/src/caf\\303\\251.ts"',
+      '+++ "b/backend/src/caf\\303\\251.ts"',
+      '@@ -1 +1 @@',
+      '-old',
+      '+new',
+      'diff --git weird header',
+      '@@ -1 +1 @@',
+      '-x',
+      '+y',
+    ].join('\n');
+    const files = parsePatch(patch);
+    expect(files.map((file) => [file.path, file.added])).toEqual([
+      ['backend/tests/a.test.ts', ['test']],
+      ['backend/src/caf\u00e9.ts', ['new']],
+      ['(unreadable diff header) weird header', ['y']],
+    ]);
+    expect(checkPaths(files).details).toEqual([
+      'backend/src/caf\u00e9.ts is outside the allowed paths',
+      '(unreadable diff header) weird header is outside the allowed paths',
+    ]);
+  });
+});
+
 describe('G1 checkPaths', () => {
   it('checks both sides of a rename and only test files under backend and frontend', () => {
     const renamed = { ...diff('backend/tests/a.test.ts', []), oldPath: 'backend/src/a.ts', isRename: true };
@@ -148,6 +181,15 @@ describe('G2 guardDiff', () => {
       "frontend/src/test/setup.ts: skipped, focused, todo, conditional or expected-to-fail test: it.skipIf(true)('x', () => {});",
       "backend/tests/router.test.ts: existing line removed or changed: import { createApp } from '../src/factory';",
     ]);
+  });
+});
+
+describe('lostTests', () => {
+  it('finds an existing test hidden by added comment lines, counting duplicate titles', () => {
+    const before = "it('a', () => { expect(1).toBe(1); });\nit('b', () => { expect(2).toBe(2); });\nit('b', () => { expect(3).toBe(3); });";
+    const after = "it('a', () => { expect(1).toBe(1); });\n/*\nit('b', () => { expect(2).toBe(2); });\n*/\nit('b', () => { expect(3).toBe(3); });\nit('c', () => { expect(4).toBe(4); });";
+    expect(lostTests(before, after, 'x.test.ts')).toEqual(['b']);
+    expect(lostTests(undefined, after, 'x.test.ts')).toEqual([]);
   });
 });
 

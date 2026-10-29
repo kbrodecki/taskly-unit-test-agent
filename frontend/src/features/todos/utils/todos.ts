@@ -23,6 +23,19 @@ export function validateTodo(input: TodoInput): Record<string, string> {
   return errors
 }
 
+function matchesStatus(todo: Todo, filter: Filter): boolean {
+  return (
+    filter === 'all' ||
+    (filter === 'completed' ? todo.completed : !todo.completed)
+  )
+}
+
+function matchesSearch(todo: Todo, search: string): boolean {
+  return `${todo.title} ${todo.description}`
+    .toLocaleLowerCase('en')
+    .includes(search)
+}
+
 export function selectTodos(
   todos: Todo[],
   filter: Filter,
@@ -31,17 +44,9 @@ export function selectTodos(
 ): Todo[] {
   const search = query.trim().toLocaleLowerCase('en')
   return todos
-    .filter((todo) => {
-      const statusMatches =
-        filter === 'all' ||
-        (filter === 'completed' ? todo.completed : !todo.completed)
-      return (
-        statusMatches &&
-        `${todo.title} ${todo.description}`
-          .toLocaleLowerCase('en')
-          .includes(search)
-      )
-    })
+    .filter(
+      (todo) => matchesStatus(todo, filter) && matchesSearch(todo, search),
+    )
     .sort((a, b) => {
       if (sort === 'priority')
         return (

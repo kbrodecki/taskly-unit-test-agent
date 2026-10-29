@@ -26,3 +26,5 @@ Gates:
 | G7 | a file the agent created or updated tests for gains no covered lines |
 
 Tests that already fail without the patch are reported as the author's, not as a gate failure.
+
+Coverage comes from each app's `lcov`. A line counts as uncovered when it did not run, holds a function that never ran, or holds a branch never taken; a one-line route handler is otherwise "covered" as soon as the route is registered.

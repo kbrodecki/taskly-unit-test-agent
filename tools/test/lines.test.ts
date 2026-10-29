@@ -37,6 +37,18 @@ describe('parseLcov', () => {
   });
 });
 
+describe('parseLcov with functions and branches', () => {
+  it('marks a line uncovered when its function never ran, even if the line executed', () => {
+    const lcov = ['SF:src/router.ts', 'FN:19,(anonymous_4)', 'FN:20,(anonymous_5)', 'FNDA:0,(anonymous_4)', 'FNDA:2,(anonymous_5)', 'DA:19,28', 'DA:20,2', 'end_of_record'].join('\n');
+    expect([...parseLcov(lcov, 'backend').get('backend/src/router.ts')!]).toEqual([[19, 0], [20, 2]]);
+  });
+
+  it('marks a line uncovered when one of its branches was never taken', () => {
+    const lcov = ['SF:src/header.tsx', 'BRDA:20,0,0,3', 'BRDA:20,0,1,0', 'BRDA:30,1,0,-', 'BRDA:40,2,0,1', 'DA:20,3', 'DA:30,1', 'DA:40,1', 'end_of_record'].join('\n');
+    expect([...parseLcov(lcov, 'frontend').get('frontend/src/header.tsx')!]).toEqual([[20, 0], [30, 0], [40, 1]]);
+  });
+});
+
 describe('uncoveredLines', () => {
   const hits = new Map([[4, 0], [5, 2], [12, 0]]);
 

@@ -47,6 +47,14 @@ it('does not send read-only fields on update', async () => {
   )
 })
 
+it('clears completed tasks with a DELETE to the completed collection', async () => {
+  vi.mocked(request).mockResolvedValue({ deleted: 3 })
+  await expect(todosApi.clearCompleted()).resolves.toEqual({ deleted: 3 })
+  expect(request).toHaveBeenCalledWith('/todos/completed', {
+    method: 'DELETE',
+  })
+})
+
 it('deletes a task with the DELETE method', async () => {
   vi.mocked(request).mockResolvedValue(undefined)
   await expect(todosApi.remove(7)).resolves.toBeUndefined()

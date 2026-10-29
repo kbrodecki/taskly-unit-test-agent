@@ -25,6 +25,6 @@ if (mode === 'pr') {
 }
 
 const input = buildInput(mode, changed, changedLines, before.coverage, limit);
-writeJson(join(outDir, 'input.json'), { ...input, authorFailures: before.failed });
+writeJson(join(outDir, 'input.json'), { ...input, headSha: git(root, 'rev-parse', 'HEAD').trim(), authorFailures: before.failed });
 writeJson(join(outDir, 'coverage-before.json'), serializeCoverage(before.coverage));
 console.log(`${input.files.length} file(s) for the agent, ${input.codeDecisions.length} decided by code, ${before.failed.length} failing test(s) before the agent`);

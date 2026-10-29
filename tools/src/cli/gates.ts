@@ -6,15 +6,17 @@ import { checkAssertions, checkPaths, checkValue, compareFailures, gate, type Ga
 import type { AgentInput } from '../input.ts';
 import { parsePatch } from '../patch.ts';
 import { linePercent } from '../vitest-results.ts';
-import { APPS, arg, deserializeCoverage, git, readJson, runAll, writeJson } from './shared.ts';
+import { APPS, arg, deserializeCoverage, git, readJson, runAll, worktreePatch, writeJson } from './shared.ts';
 
 const root = resolve(arg('root', '.'));
 const dir = resolve(arg('input', '.unit-test-agent'));
-const patchFile = arg('patch', '');
-const outFile = resolve(arg('out', join(dir, 'gates.json')));
-const reruns = Number(arg('reruns', '5'));
+const worktree = process.argv.includes('--worktree');
+const patchFile = worktree ? '' : arg('patch', '');
+const outFile = resolve(arg('out', join(dir, worktree ? 'gates-self.json' : 'gates.json')));
+const reruns = Number(arg('reruns', worktree ? '2' : '5'));
 
-const input = readJson<AgentInput & { authorFailures: string[] }>(join(dir, 'input.json'));
+const input = readJson<AgentInput & { headSha?: string; authorFailures: string[] }>(join(dir, 'input.json'));
+const base = input.headSha ?? 'HEAD';
 const coverageBefore = deserializeCoverage(readJson(join(dir, 'coverage-before.json')));
 const decisionsFile = join(dir, 'decisions.json');
 const validation = existsSync(decisionsFile)
@@ -23,7 +25,7 @@ const validation = existsSync(decisionsFile)
     ? ({ ok: true, decisions: { mode: input.mode, files: [] } } as const)
     : ({ ok: false, errors: ['decisions.json is missing'] } as const);
 
-const patch = patchFile && existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : '';
+const patch = worktree ? worktreePatch(root, base) : patchFile && existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : '';
 const diffs = parsePatch(patch);
 const gates: GateResult[] = [];
 let coverageAfter = coverageBefore;
@@ -33,7 +35,7 @@ if (diffs.length === 0) {
   gates.push({ id: 'G1-G7', name: 'No test changes to check', status: 'skipped', details: [] });
 } else {
   gates.push(checkPaths(diffs), guardDiff(diffs));
-  const applied = spawnSync('git', ['apply', '--whitespace=nowarn', patchFile], { cwd: root, encoding: 'utf8' });
+  const applied = worktree ? { status: 0, stderr: '' } : spawnSync('git', ['apply', '--whitespace=nowarn', patchFile], { cwd: root, encoding: 'utf8' });
   if (applied.status !== 0) {
     gates.push(gate('G0', 'Patch applies to the PR head', [applied.stderr.trim() || 'git apply failed']));
   } else {
@@ -41,7 +43,7 @@ if (diffs.length === 0) {
     const added = testFiles.map((diff) => {
       let before: string | undefined;
       try {
-        before = git(root, 'show', `HEAD:${diff.path}`);
+        before = git(root, 'show', `${base}:${diff.path}`);
       } catch {
         before = undefined;
       }
@@ -58,7 +60,8 @@ if (diffs.length === 0) {
     coverageAfter = after.coverage;
     const failures = compareFailures(input.authorFailures, after.failed);
     authorFailures = failures.existing;
-    gates.push(gate('G4', 'Full backend and frontend suites pass', failures.added.map((name) => `${name} fails with the agent changes`)));
+    const crashed = !after.ok && after.failed.length === 0 ? ['a test suite did not run to completion (no failing test reported, non-zero exit)'] : [];
+    gates.push(gate('G4', 'Full backend and frontend suites pass', [...failures.added.map((name) => `${name} fails with the agent changes`), ...crashed]));
 
     const flaky: string[] = [];
     for (const app of APPS) {

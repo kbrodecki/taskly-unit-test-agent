@@ -10,6 +10,12 @@ export function git(root: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
+export function worktreePatch(root: string, base: string): string {
+  const untracked = git(root, 'ls-files', '--others', '--exclude-standard', '-z').split('\0').filter(Boolean);
+  if (untracked.length > 0) git(root, 'add', '--intent-to-add', '--', ...untracked);
+  return git(root, 'diff', '--no-color', '-M', base);
+}
+
 export function arg(name: string, fallback?: string): string {
   const index = process.argv.indexOf(`--${name}`);
   const value = index === -1 ? fallback : process.argv[index + 1];

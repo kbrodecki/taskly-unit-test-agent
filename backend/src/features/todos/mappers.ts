@@ -13,3 +13,7 @@ export function fromModel(record: TodoRecord): Todo {
     updated_at: record.updated_at.toISOString(),
   });
 }
+
+export function isOverdue(todo: Todo, today: string): boolean {
+  return !todo.completed && todo.due_date !== null && todo.due_date < today;
+}

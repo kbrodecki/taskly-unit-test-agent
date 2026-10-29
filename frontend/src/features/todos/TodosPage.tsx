@@ -54,6 +54,7 @@ export function TodosPage() {
           disabled={todosQuery.isPending || busy}
           onCreate={() => setEditor('new')}
           onClearCompleted={() => setClearing(true)}
+          completedCount={todos.filter((todo) => todo.completed).length}
         />
         <TodoFilters
           filter={filters.filter}

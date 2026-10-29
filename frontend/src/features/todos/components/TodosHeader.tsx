@@ -5,10 +5,12 @@ export function TodosHeader({
   disabled,
   onCreate,
   onClearCompleted,
+  completedCount = 0,
 }: {
   disabled: boolean
   onCreate: () => void
   onClearCompleted?: () => void
+  completedCount?: number
 }) {
   return (
     <section className="row spread" aria-labelledby="page-title">
@@ -20,11 +22,11 @@ export function TodosHeader({
         {onClearCompleted && (
           <Button
             variant="secondary"
-            disabled={disabled}
+            disabled={disabled || completedCount === 0}
             onClick={onClearCompleted}
           >
             <CheckCheck size={18} aria-hidden="true" />
-            Clear completed
+            Clear completed ({completedCount})
           </Button>
         )}
         <Button disabled={disabled} onClick={onCreate}>

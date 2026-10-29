@@ -54,6 +54,17 @@ pre-agent-steps:
     env:
       BASE_REF: ${{ github.event.pull_request.base.ref }}
     run: node tools/src/cli/prepare.ts --mode pr --base "origin/$BASE_REF"
+  # Uploaded before the agent starts: the gates and the report read the input and the coverage
+  # baseline from here, not from the agent's workspace, which the agent can edit.
+  - name: Upload prepared input
+    uses: actions/upload-artifact@v7
+    with:
+      name: unit-test-agent-input
+      path: |
+        .unit-test-agent/input.json
+        .unit-test-agent/coverage-before.json
+      include-hidden-files: true
+      if-no-files-found: error
 post-steps:
   - name: Upload agent input and decisions
     if: always()
@@ -66,8 +77,9 @@ post-steps:
 safe-outputs:
   push-to-pull-request-branch:
     allowed-files:
-      - "**/*.test.ts"
-      - "**/*.test.tsx"
+      - "backend/**/*.test.ts"
+      - "frontend/**/*.test.ts"
+      - "frontend/**/*.test.tsx"
       - "backend/tests/**"
       - "frontend/src/test/**"
   threat-detection:
@@ -95,15 +107,23 @@ jobs:
           npm ci --prefix tools
       - uses: actions/download-artifact@v8
         with:
-          name: unit-test-agent-data
+          name: unit-test-agent-input
           path: .unit-test-agent
+      - uses: actions/download-artifact@v8
+        with:
+          name: unit-test-agent-data
+          path: /tmp/agent-data
       - uses: actions/download-artifact@v8
         with:
           name: agent
           path: /tmp/agent-artifact
       - name: Run gates G1 to G7
         run: |
-          patch="$(find /tmp/agent-artifact -maxdepth 1 -name 'aw-*.patch' | head -n 1)"
+          # The agent's own output is decisions.json; everything else it left in its workspace is ignored.
+          if [ -f /tmp/agent-data/decisions.json ]; then cp /tmp/agent-data/decisions.json .unit-test-agent/decisions.json; fi
+          count="$(find /tmp/agent-artifact -maxdepth 1 -name 'aw-*.patch' | wc -l)"
+          if [ "$count" -gt 1 ]; then echo "expected at most one agent patch, found $count"; exit 1; fi
+          patch="$(find /tmp/agent-artifact -maxdepth 1 -name 'aw-*.patch')"
           node tools/src/cli/gates.ts --patch "$patch" --mutation --mutation-minutes 8
       - name: Upload gate results
         if: always()
@@ -140,7 +160,7 @@ jobs:
       - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
-          name: unit-test-agent-data
+          name: unit-test-agent-input
           path: .unit-test-agent
       - uses: actions/download-artifact@v8
         continue-on-error: true

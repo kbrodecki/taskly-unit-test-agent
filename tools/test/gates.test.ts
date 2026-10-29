@@ -3,7 +3,8 @@ import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures
 import { parsePatch } from '../src/patch.ts';
 import { findTests } from '../src/test-ast.ts';
 
-const diff = (path: string, added: string[], removed: string[] = [], isNew = false) => ({ path, isNew, isDeleted: false, added, removed });
+const flags = { isRename: false, isSymlink: false, modeChanged: false };
+const diff = (path: string, added: string[], removed: string[] = [], isNew = false) => ({ path, isNew, isDeleted: false, ...flags, added, removed });
 
 describe('parsePatch', () => {
   it('reads new, modified and deleted files with their added and removed lines', () => {
@@ -29,9 +30,9 @@ describe('parsePatch', () => {
       '-gone',
     ].join('\n');
     expect(parsePatch(patch)).toEqual([
-      { path: 'backend/tests/a.test.ts', isNew: true, isDeleted: false, added: ["import { it } from 'vitest';", "it('works', () => {});"], removed: [] },
-      { path: 'frontend/src/x.test.ts', isNew: false, isDeleted: false, added: ['new line'], removed: ['old line'] },
-      { path: 'backend/tests/old.test.ts', isNew: false, isDeleted: true, added: [], removed: ['gone'] },
+      { path: 'backend/tests/a.test.ts', isNew: true, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: ["import { it } from 'vitest';", "it('works', () => {});"], removed: [] },
+      { path: 'frontend/src/x.test.ts', isNew: false, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: ['new line'], removed: ['old line'] },
+      { path: 'backend/tests/old.test.ts', isNew: false, isDeleted: true, isRename: false, isSymlink: false, modeChanged: false, added: [], removed: ['gone'] },
     ]);
   });
 });
@@ -52,11 +53,48 @@ describe('parsePatch with git format-patch output', () => {
       '-- ',
       '2.50.0',
     ].join('\n');
-    expect(parsePatch(patch)).toEqual([{ path: 'backend/tests/a.test.ts', isNew: false, isDeleted: false, added: ['added'], removed: [] }]);
+    expect(parsePatch(patch)).toEqual([{ path: 'backend/tests/a.test.ts', isNew: false, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: ['added'], removed: [] }]);
+  });
+});
+
+describe('parsePatch edge cases', () => {
+  it('reports a pure rename, a symlink and content lines that look like headers', () => {
+    const patch = [
+      'diff --git a/backend/tests/a.test.ts b/backend/tests/a.ts',
+      'similarity index 100%',
+      'rename from backend/tests/a.test.ts',
+      'rename to backend/tests/a.ts',
+      'diff --git a/backend/tests/link.ts b/backend/tests/link.ts',
+      'new file mode 120000',
+      '--- /dev/null',
+      '+++ b/backend/tests/link.ts',
+      '@@ -0,0 +1 @@',
+      '+../src/main.ts',
+      'diff --git a/backend/tests/b.test.ts b/backend/tests/b.test.ts',
+      '--- a/backend/tests/b.test.ts',
+      '+++ b/backend/tests/b.test.ts',
+      '@@ -1,2 +1,2 @@',
+      '--- old comment line',
+      '+++ new comment line',
+      ' kept',
+    ].join('\n');
+    expect(parsePatch(patch)).toEqual([
+      { path: 'backend/tests/a.ts', oldPath: 'backend/tests/a.test.ts', isNew: false, isDeleted: false, isRename: true, isSymlink: false, modeChanged: false, added: [], removed: [] },
+      { path: 'backend/tests/link.ts', isNew: true, isDeleted: false, isRename: false, isSymlink: true, modeChanged: false, added: ['../src/main.ts'], removed: [] },
+      { path: 'backend/tests/b.test.ts', isNew: false, isDeleted: false, ...flags, added: ['++ new comment line'], removed: ['-- old comment line'] },
+    ]);
   });
 });
 
 describe('G1 checkPaths', () => {
+  it('checks both sides of a rename and only test files under backend and frontend', () => {
+    const renamed = { ...diff('backend/tests/a.test.ts', []), oldPath: 'backend/src/a.ts', isRename: true };
+    expect(checkPaths([renamed, diff('tools/test/x.test.ts', [])]).details).toEqual([
+      'backend/src/a.ts is outside the allowed paths',
+      'tools/test/x.test.ts is outside the allowed paths',
+    ]);
+  });
+
   it('passes tests and fixtures and fails anything else', () => {
     const result = checkPaths([diff('backend/tests/router.test.ts', []), diff('frontend/src/test/todoFixture.ts', []), diff('backend/src/api/health.ts', []), diff('.github/workflows/ci.yml', [])]);
     expect(result).toEqual({
@@ -85,14 +123,30 @@ describe('G2 guardDiff', () => {
   it('fails removed or changed assertions, skipped or focused tests, suppressions and deleted test files', () => {
     const result = guardDiff([
       diff('backend/tests/router.test.ts', ['  expect(response.status).toBe(500);', "it.skip('later', () => {});", '// @ts-expect-error', "fit('focus', () => {});"], ['  expect(response.status).toBe(200);']),
-      { path: 'backend/tests/old.test.ts', isNew: false, isDeleted: true, added: [], removed: ['x'] },
+      { path: 'backend/tests/old.test.ts', isNew: false, isDeleted: true, isRename: false, isSymlink: false, modeChanged: false, added: [], removed: ['x'] },
     ]);
     expect(result.details).toEqual([
-      "backend/tests/router.test.ts: skipped, focused, todo or expected-to-fail test: it.skip('later', () => {});",
+      "backend/tests/router.test.ts: skipped, focused, todo, conditional or expected-to-fail test: it.skip('later', () => {});",
       'backend/tests/router.test.ts: type check suppression: // @ts-expect-error',
       "backend/tests/router.test.ts: skipped or focused test: fit('focus', () => {});",
       'backend/tests/router.test.ts: existing line removed or changed: expect(response.status).toBe(200);',
       'backend/tests/old.test.ts: deleting a test file is not allowed',
+    ]);
+  });
+
+  it('fails renamed test files, symlinks, conditional and run-time skips, and imports removed without replacement', () => {
+    const result = guardDiff([
+      { ...diff('backend/tests/a.ts', []), oldPath: 'backend/tests/a.test.ts', isRename: true },
+      { ...diff('backend/tests/link.ts', ['../src/main.ts'], [], true), isSymlink: true },
+      diff('frontend/src/test/setup.ts', ['beforeEach((context) => context.skip());', "it.skipIf(true)('x', () => {});"]),
+      diff('backend/tests/router.test.ts', [], ["import { createApp } from '../src/factory';"]),
+    ]);
+    expect(result.details).toEqual([
+      'backend/tests/a.test.ts: renaming or copying a test file is not allowed (to backend/tests/a.ts)',
+      'backend/tests/link.ts: symbolic links are not allowed',
+      'frontend/src/test/setup.ts: test skipped at run time: beforeEach((context) => context.skip());',
+      "frontend/src/test/setup.ts: skipped, focused, todo, conditional or expected-to-fail test: it.skipIf(true)('x', () => {});",
+      "backend/tests/router.test.ts: existing line removed or changed: import { createApp } from '../src/factory';",
     ]);
   });
 });

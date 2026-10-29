@@ -1,0 +1,33 @@
+# ADR 4: Gates in their own job decide the push, all or nothing
+
+## Context
+
+The agent's patch must be checked by code before it reaches the PR branch. In gh-aw the agent job's own post-steps do not stop the safe output. A failed custom step in the threat detection job does stop it, but then no job that depends on detection runs, so the PR would get no report.
+
+## Decision
+
+A custom `gates` job runs after detection, applies the patch to the PR head and runs gates G0 to G7. The safe output job has `if: needs.gates.result == 'success'`. The `report` job runs in every case and explains a block.
+
+| Gate | Blocks when |
+|---|---|
+| G0 | a `create` or `update` has no test file in the patch, or the patch does not apply |
+| G1 | the patch touches anything except test paths |
+| G2 | an existing test line is removed or changed, or a test is skipped, focused or suppressed |
+| G3 | typecheck fails, or a new test has no real assertion |
+| G4 | a test fails with the patch that did not fail without it |
+| G5 | new or changed test files fail one of five runs in shuffled order |
+| G6 | a new test only checks existence, truthiness or an HTTP status |
+| G7 | a file with tests added gains no covered lines and no detected mutants (fully covered files pass) |
+
+The gates cannot remove one bad test from a patch, so the agent runs the same gates on its working tree first (`gates.ts --worktree`). A test it cannot fix in three attempts it deletes and lists as rejected in `decisions.json`.
+
+## Alternatives
+
+- Gates in the detection job: the documented blocking path, but a block also hides the report.
+- The gates cut failing tests out of the patch: a partial push, but the code that edits the agent's patch would be fragile and hard to trust.
+
+## Consequences
+
+- One bad test blocks the whole patch; the report names the gate and the test, and the patch stays in the run's artifacts.
+- The agent's self-check uses line coverage only, so it is stricter than CI, where Stryker can also pass G7.
+- Gate behavior depends on gh-aw job names and the patch file name in the `agent` artifact; a gh-aw upgrade must be checked against both.

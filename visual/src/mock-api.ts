@@ -28,39 +28,20 @@ export const SAMPLE: MockTodo[] = [
 const json = (route: Route, status: number, body?: unknown) =>
   route.fulfill({ status, contentType: 'application/json', body: body === undefined ? '' : JSON.stringify(body) });
 
-export async function mockApi(page: Page, initial: MockTodo[]): Promise<MockTodo[]> {
+// Serves only the requests the scenarios make; anything else gets a 404 so a new scenario fails loudly.
+export async function mockApi(page: Page, initial: MockTodo[]): Promise<void> {
   const todos = initial.map((item) => ({ ...item }));
   await page.clock.setFixedTime(NOW);
   await page.route('**/api/**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace(/^\/api/, '');
     const method = request.method();
-    const body = request.postDataJSON?.() ?? null;
     if (path === '/todos' && method === 'GET') return json(route, 200, todos);
-    if (path === '/todos' && method === 'POST') {
-      const created = todo(Math.max(0, ...todos.map((item) => item.id)) + 1, { ...body, created_at: NOW.toISOString(), updated_at: NOW.toISOString() });
-      todos.unshift(created);
-      return json(route, 201, created);
-    }
     if (path === '/todos/completed' && method === 'DELETE') {
       const before = todos.length;
       todos.splice(0, todos.length, ...todos.filter((item) => !item.completed));
       return json(route, 200, { deleted: before - todos.length });
     }
-    const match = path.match(/^\/todos\/(\d+)$/);
-    const index = match ? todos.findIndex((item) => item.id === Number(match[1])) : -1;
-    if (index === -1) return json(route, 404, { detail: 'Task not found.' });
-    if (method === 'GET') return json(route, 200, todos[index]);
-    if (method === 'PATCH') {
-      const defined = Object.fromEntries(Object.entries(body ?? {}).filter(([, value]) => value !== undefined));
-      todos[index] = { ...todos[index], ...defined, updated_at: NOW.toISOString() };
-      return json(route, 200, todos[index]);
-    }
-    if (method === 'DELETE') {
-      todos.splice(index, 1);
-      return json(route, 204);
-    }
-    return json(route, 405, { detail: 'Method not allowed.' });
+    return json(route, 404, { detail: `No mock for ${method} ${path}.` });
   });
-  return todos;
 }

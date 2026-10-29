@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { AgentInput } from './input.ts';
 
-export const MODEL_SKIP_REASONS = ['no-behavior-change', 'already-covered', 'covered-by-author', 'wiring', 'needs-refactor'] as const;
-export const CATEGORIES = ['happy-path', 'boundaries', 'validation-error', 'network-or-repository-error', 'double-submit', 'loading-and-disabled-state'] as const;
+const MODEL_SKIP_REASONS = ['no-behavior-change', 'already-covered', 'covered-by-author', 'wiring', 'needs-refactor'] as const;
+const CATEGORIES = ['happy-path', 'boundaries', 'validation-error', 'network-or-repository-error', 'double-submit', 'loading-and-disabled-state'] as const;
 
 const text = z.string().trim().min(1).max(300);
 
@@ -17,7 +17,7 @@ const entry = z.strictObject({
   rejected: z.array(z.strictObject({ case: text, reason: text })).default([]),
 });
 
-export const decisionsSchema = z.strictObject({
+const decisionsSchema = z.strictObject({
   mode: z.enum(['pr', 'backfill']),
   files: z.array(entry),
 });

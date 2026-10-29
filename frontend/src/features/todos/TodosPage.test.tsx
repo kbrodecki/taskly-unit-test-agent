@@ -18,9 +18,6 @@ vi.mock('./hooks/useTodosQuery', () => ({ useTodosQuery: vi.fn() }))
 vi.mock('./hooks/useUpdateTodoMutation', () => ({
   useUpdateTodoMutation: vi.fn(),
 }))
-vi.mock('./components/TodosHeader', () => ({
-  TodosHeader: () => <h1>Tasks</h1>,
-}))
 vi.mock('./components/ClearCompletedDialog', () => ({
   ClearCompletedDialog: ({
     onClose,
@@ -34,14 +31,6 @@ vi.mock('./components/ClearCompletedDialog', () => ({
       <button onClick={() => onCleared(1)}>Cleared one</button>
       <button onClick={() => onCleared(4)}>Cleared four</button>
     </div>
-  ),
-}))
-vi.mock('./components/TodosHeader', () => ({
-  TodosHeader: ({ onClearCompleted }: { onClearCompleted: () => void }) => (
-    <>
-      <h1>Tasks</h1>
-      <button onClick={onClearCompleted}>Open clear</button>
-    </>
   ),
 }))
 vi.mock('./components/TodosHeader', () => ({

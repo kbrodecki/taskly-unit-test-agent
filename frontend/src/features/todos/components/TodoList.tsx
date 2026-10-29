@@ -37,7 +37,7 @@ export function TodoList({
           <Heading level={3}>The task list is temporarily unavailable</Heading>
           <Text muted>Try again to load your tasks.</Text>
         </Card>
-      ) : todos.length ? (
+      ) : todos.length > 0 ? (
         <ul className="todo-list stack compact">
           {todos.map((todo) => (
             <TodoItem

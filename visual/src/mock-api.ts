@@ -42,6 +42,11 @@ export async function mockApi(page: Page, initial: MockTodo[]): Promise<MockTodo
       todos.unshift(created);
       return json(route, 201, created);
     }
+    if (path === '/todos/completed' && method === 'DELETE') {
+      const before = todos.length;
+      todos.splice(0, todos.length, ...todos.filter((item) => !item.completed));
+      return json(route, 200, { deleted: before - todos.length });
+    }
     const match = path.match(/^\/todos\/(\d+)$/);
     const index = match ? todos.findIndex((item) => item.id === Number(match[1])) : -1;
     if (index === -1) return json(route, 404, { detail: 'Task not found.' });

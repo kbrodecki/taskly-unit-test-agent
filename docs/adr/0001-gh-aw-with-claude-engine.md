@@ -2,7 +2,7 @@
 
 ## Context
 
-The agent runs on every pull request, reads code that anyone with push access can change, and must write only tests. The rubric weighs security and reliability. Skills must be reusable, also outside CI.
+The agent runs on every pull request, reads code that anyone with push access can change, and must write only tests. With that much access, security and reliability matter more than speed. Skills must be reusable, also outside CI.
 
 ## Decision
 

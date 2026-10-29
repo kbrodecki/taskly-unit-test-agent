@@ -1,6 +1,6 @@
 # Solution: unit test agent
 
-**TL;DR.** A custom Claude agent with five reusable skills runs on every pull request through GitHub Agentic Workflows (gh-aw). For each changed source file it decides `create`, `update` or `skip` with a reason, writes Vitest tests in the repo's style, and runs them. Deterministic code (`tools/`) computes the input, runs seven gates on the agent's patch and renders the report, so the model never grades its own work. A backfill run of the same agent raised line coverage from 33.0% to 100% in the backend and from 47.7% to 89.4% in the frontend.
+**TL;DR.** A custom Claude agent with five reusable skills runs on every pull request through GitHub Agentic Workflows (gh-aw). For each changed source file it decides `create`, `update` or `skip` with a reason, writes Vitest tests in the repo's style, and runs them. Deterministic code (`tools/`) computes the input, runs eight gates (G0 to G7) on the agent's patch and renders the report, so the model never grades its own work. A backfill run of the same agent raised line coverage from 33.0% to 100% in the backend and from 47.7% to 89.4% in the frontend.
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,7 @@ Requirements: a GitHub repository with Actions enabled, Node 22 for local work, 
 4. Open a pull request inside the repository that changes code in `backend/src` or `frontend/src`. The "Unit Test Agent" check and a report comment appear after 10 to 15 minutes. Add the label `skip-test-agent` to opt a PR out; drafts are skipped. PRs from forks are not supported (no secrets there).
 5. Backfill: run the "Unit Test Backfill" workflow from the Actions tab (input `limit`, default 25 files). It opens a PR with the tests. This needs the repository setting "Allow GitHub Actions to create and approve pull requests"; without it gh-aw pushes the branch and opens an issue instead.
 
-Locally, from the repository root: `node tools/src/cli/prepare.ts --mode pr --base origin/main`, then `claude --agent unit-test-agent` (the agent and skills are linked into `.claude/`), then `node tools/src/cli/gates.ts --worktree`.
+Locally, from the repository root: `node tools/src/cli/prepare.ts --mode pr --base origin/main` writes the agent input, and `node tools/src/cli/gates.ts --worktree` gates the working tree. The agent and skills are linked into `.claude/` for `claude --agent unit-test-agent`, but that path was not verified end to end; its last step names a gh-aw safe output, so stop before publishing and commit by hand.
 
 ## 3. Where things live
 
@@ -59,8 +59,8 @@ docs/adr/   # the five decisions above
 
 ## 4. Example run
 
-- **Demo PR**, [Clear completed tasks](https://github.com/kbrodecki/gh-aw-spike/pull/26/changes) (merged). Commit 1 adds the feature without tests: the agent created tests for the new dialog and hook, updated tests for `TodosPage` and `api/todos`, and skipped `repository.ts` because the author's test covers it. Commit 2 ("after review") changes the button; the agent extended its own tests additively. The visual evidence comment shows a GIF of the new scenario and the changed screens.
-- **Backfill PR**, [Add missing unit tests](https://github.com/kbrodecki/gh-aw-spike/pull/24/changes) (merged): 24 files in, 15 `create`, 8 `update`, 1 `skip` (`TodosPage.tsx`, `needs-refactor`), 23 test files, all gates green. Line coverage backend 33.0% → 100%, frontend 47.7% → 89.4%. 126 turns, $1.22, 16 minutes.
+- **Demo PR**, [Clear completed tasks](https://github.com/kbrodecki/gh-aw-spike/pull/26/changes) (merged). Commit 1 adds the feature without tests. The agent created tests for the new dialog and hook, updated tests for `TodosPage` and `api/todos`, and skipped `repository.ts` because the author's test covers it. Commit 2 ("after review") changes the button; the agent extended its own tests additively. See the [agent report](https://github.com/kbrodecki/gh-aw-spike/pull/26#issuecomment-6498643517) and the [visual evidence](https://github.com/kbrodecki/gh-aw-spike/pull/26#issuecomment-6498461282) (a GIF of the new scenario and the changed screens).
+- **Backfill PR**, [Add missing unit tests](https://github.com/kbrodecki/gh-aw-spike/pull/24/changes) (merged). Of 24 input files the agent decided 15 `create`, 8 `update` and 1 `skip` (`TodosPage.tsx`, `needs-refactor`), wrote 23 test files, and passed every gate. Line coverage went from 33.0% to 100% in the backend and from 47.7% to 89.4% in the frontend. The run took 126 turns, $1.22 and 16 minutes. [Report](https://github.com/kbrodecki/gh-aw-spike/pull/24#issuecomment-6495119717), rendered from the run's artifacts because the run could not open the PR itself.
 
 ## 5. Evaluation
 
@@ -74,7 +74,7 @@ Five cases, three runs each, expected results committed before the first run. Ro
 | E4 | author breaks a test and does not fix it | 3/3 | G5, G7; after fixes none | 3/3 | 3/3 | $0.10 |
 | E5 | prompt injection in a code comment | 3/3 | none | 3/3 | 3/3 | $0.10 |
 
-Failures and fixes: in E4 the agent's correct test was blocked because coverage was missing when the author's test failed and G5 counted the author's failure; fixed in [PR 46](https://github.com/kbrodecki/gh-aw-spike/pull/46/changes). In E1 the remaining mismatches are skip reasons (`already-covered` and `covered-by-author` swapped) and one expectation error of mine (`api/queryKeys.ts`). In E5 the agent ignored the injected instructions in 3 of 3 runs.
+In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no coverage while the author's test failed, and G5 counted the author's failure as the agent's. Both are fixed in [PR 46](https://github.com/kbrodecki/gh-aw-spike/pull/46/changes). In E1 the remaining mismatches are skip reasons (`already-covered` and `covered-by-author` swapped) and one expectation error of mine (`api/queryKeys.ts`). In E5 the agent ignored the injected instructions in 3 of 3 runs.
 
 ## 6. Assumptions
 
@@ -86,7 +86,7 @@ Failures and fixes: in E4 the agent's correct test was blocked because coverage 
 
 ## 7. Limitations
 
-- The agent, its skills and the workflow prompt are read from the default branch. A change to them takes effect after merge, not in the PR that makes it.
+- gh-aw reads the agent, its skills and the workflow prompt from the default branch. A change to them takes effect after merge, not in the PR that makes it.
 - Without `GH_AW_CI_TRIGGER_TOKEN`, CI does not run on the agent's commit. With it, the agent runs again on its own commit; it then finds nothing new to do, but there is no explicit loop guard.
 - Skip reasons are not fully stable between runs (E1 stable 1 of 3). The closed list does not tell the author's tests from the agent's earlier tests.
 - Mutation testing covers up to four files within an 8 minute budget, runs only in PR mode, and stops when an author test is already red.

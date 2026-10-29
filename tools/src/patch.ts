@@ -12,6 +12,30 @@ export interface FileDiff {
 }
 
 const HUNK = /^@@ -\d+(?:,(\d+))? \+\d+(?:,(\d+))? @@/;
+const QUOTED = '"(?:[^"\\\\]|\\\\.)*"';
+const HEADER = new RegExp(`^diff --git (${QUOTED}|a/.+?) (${QUOTED}|b/.+)$`);
+
+// Git C-quotes paths with special characters: "a/x\tz.ts", with octal escapes for UTF-8 bytes.
+function unquote(path: string): string {
+  if (!path.startsWith('"')) return path;
+  const bytes: number[] = [];
+  const body = path.slice(1, -1);
+  const simple: Record<string, number> = { n: 10, t: 9, r: 13, '"': 34, '\\': 92, a: 7, b: 8, f: 12, v: 11 };
+  for (let i = 0; i < body.length; i += 1) {
+    if (body[i] !== '\\') {
+      bytes.push(...Buffer.from(body[i]));
+    } else if (/[0-7]/.test(body[i + 1] ?? '')) {
+      bytes.push(parseInt(body.slice(i + 1, i + 4), 8));
+      i += 3;
+    } else {
+      bytes.push(simple[body[i + 1]] ?? body.charCodeAt(i + 1));
+      i += 1;
+    }
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+
+const strip = (path: string, side: 'a' | 'b') => unquote(path).replace(new RegExp(`^${side}/`), '');
 
 // Reads `git diff` and `git format-patch` output. Header lines are only recognised outside hunks,
 // and hunk bodies are consumed by their line counts, so content that starts with "--- " or "+++ "
@@ -36,10 +60,13 @@ export function parsePatch(text: string): FileDiff[] {
       }
       continue;
     }
-    const start = /^diff --git a\/(.+) b\/(.+)$/.exec(line);
-    if (start) {
-      current = { path: start[2], isNew: false, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: [], removed: [] };
-      if (start[1] !== start[2]) current.oldPath = start[1];
+    if (line.startsWith('diff --git ')) {
+      const start = HEADER.exec(line);
+      // An unreadable header still opens a section, so its hunks are never credited to the previous file; G1 then rejects the path.
+      const path = start ? strip(start[2], 'b') : `(unreadable diff header) ${line.slice(11)}`;
+      const oldPath = start ? strip(start[1], 'a') : path;
+      current = { path, isNew: false, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: [], removed: [] };
+      if (oldPath !== path) current.oldPath = oldPath;
       files.push(current);
       continue;
     }
@@ -58,9 +85,9 @@ export function parsePatch(text: string): FileDiff[] {
       if (line.endsWith('120000')) current.isSymlink = true;
     } else if (line.startsWith('rename from ') || line.startsWith('copy from ')) {
       current.isRename = true;
-      current.oldPath = line.replace(/^(?:rename|copy) from /, '');
+      current.oldPath = unquote(line.replace(/^(?:rename|copy) from /, ''));
     } else if (line.startsWith('rename to ') || line.startsWith('copy to ')) {
-      current.path = line.replace(/^(?:rename|copy) to /, '');
+      current.path = unquote(line.replace(/^(?:rename|copy) to /, ''));
     } else if (line === '-- ') {
       current = undefined;
     }

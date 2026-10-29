@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { validateDecisions } from '../decisions.ts';
-import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, newTests } from '../gates.ts';
+import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, lostTests, newTests } from '../gates.ts';
 import type { AgentInput } from '../input.ts';
 import { parsePatch } from '../patch.ts';
 import { compareMutation, mutationScore, type MutationRun } from '../mutation.ts';
@@ -63,8 +63,12 @@ if (diffs.length === 0) {
       } catch {
         before = undefined;
       }
-      return { path: diff.path, tests: newTests(before, readFileSync(join(root, diff.path), 'utf8'), diff.path) };
+      const after = readFileSync(join(root, diff.path), 'utf8');
+      return { path: diff.path, tests: newTests(before, after, diff.path), lost: lostTests(before, after, diff.path) };
     });
+    const lost = added.flatMap((file) => file.lost.map((name) => `${file.path}: existing test "${name}" is gone (commented out, removed or renamed)`));
+    const additive = gates.find((item) => item.id === 'G2');
+    if (additive && lost.length > 0) Object.assign(additive, { status: 'fail', details: [...additive.details, ...lost] });
     const typeErrors = APPS.flatMap((app) => {
       const run = spawnSync('npm', ['run', '--silent', 'typecheck'], { cwd: join(root, app), encoding: 'utf8' });
       return run.status === 0 ? [] : [`${app}: typecheck failed: ${(run.stdout + run.stderr).trim().split('\n').slice(0, 5).join(' / ')}`];

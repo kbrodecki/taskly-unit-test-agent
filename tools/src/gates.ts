@@ -80,6 +80,21 @@ export function guardDiff(diffs: FileDiff[]): GateResult {
   return gate('G2', 'Changes to existing tests are additive only', problems);
 }
 
+// Additive edits can still hide a test, for example by wrapping it in a block comment. Every test
+// the file had before the patch must still be there after it (counted, so duplicate titles count too).
+export function lostTests(before: string | undefined, after: string, fileName: string): string[] {
+  if (!before) return [];
+  const left = new Map<string, number>();
+  for (const test of findTests(after, fileName)) left.set(test.name, (left.get(test.name) ?? 0) + 1);
+  const lost: string[] = [];
+  for (const test of findTests(before, fileName)) {
+    const count = left.get(test.name) ?? 0;
+    if (count === 0) lost.push(test.name);
+    else left.set(test.name, count - 1);
+  }
+  return lost;
+}
+
 export function newTests(before: string | undefined, after: string, fileName: string): TestCase[] {
   const old = new Set(before ? findTests(before, fileName).map((test) => test.name) : []);
   return findTests(after, fileName).filter((test) => !old.has(test.name));

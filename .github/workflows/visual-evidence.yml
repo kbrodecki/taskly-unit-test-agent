@@ -39,10 +39,9 @@ jobs:
           node-version: 22
       - name: Build the base and head frontends
         run: |
-          npm ci --prefix base/frontend
-          npm --prefix base/frontend exec -- vite build
-          npm ci --prefix head/frontend
-          npm --prefix head/frontend exec -- vite build
+          for side in base head; do
+            (cd "$side/frontend" && npm ci && npx vite build)
+          done
       - name: Install Playwright
         working-directory: head/visual
         run: |

@@ -8,7 +8,7 @@ Screenshots of the frontend for pull requests that change it. Not part of the un
 
 The workflow `.github/workflows/visual-evidence.yml` builds the base and head frontends, captures both, compares them and uploads `out/`. A second job, which runs no code from the PR, commits the images to the `visual-evidence` branch under `pr-<N>/<sha>/` and updates one "Visual evidence" comment. Scenarios tagged `@video` in their title are also recorded as video (and a GIF) when the PR has the `visual-video` label.
 
-Run locally from this directory after `npm --prefix ../frontend exec -- vite build`:
+Run locally from this directory after `npx vite build` in `frontend/`:
 
 ```bash
 VISUAL_OUT=out/after npx playwright test

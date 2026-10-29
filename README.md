@@ -1,5 +1,7 @@
 # Taskly App Node
 
+The unit test agent and its workflows are described in [SOLUTION.md](SOLUTION.md).
+
 ## Setup
 
 ```sh

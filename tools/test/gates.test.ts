@@ -151,12 +151,17 @@ describe('compareFailures', () => {
 });
 
 describe('G7 checkValue', () => {
-  it('fails files whose covered line count did not grow', () => {
-    const before = new Map([['backend/src/a.ts', new Map([[1, 0], [2, 1]])], ['backend/src/b.ts', new Map([[1, 1]])]]);
-    const after = new Map([['backend/src/a.ts', new Map([[1, 3], [2, 1]])], ['backend/src/b.ts', new Map([[1, 4]])]]);
+  it('fails files with uncovered lines whose covered line count did not grow', () => {
+    const before = new Map([['backend/src/a.ts', new Map([[1, 0], [2, 1]])], ['backend/src/b.ts', new Map([[1, 0], [2, 1]])]]);
+    const after = new Map([['backend/src/a.ts', new Map([[1, 3], [2, 1]])], ['backend/src/b.ts', new Map([[1, 0], [2, 4]])]]);
     expect(checkValue(['backend/src/a.ts', 'backend/src/b.ts'], before, after).details).toEqual([
       'backend/src/b.ts: covered lines did not grow (1 before, 1 after)',
     ]);
+  });
+
+  it('passes a file that was already fully covered', () => {
+    const before = new Map([['backend/src/c.ts', new Map([[1, 2]])]]);
+    expect(checkValue(['backend/src/c.ts'], before, before).status).toBe('pass');
   });
 });
 

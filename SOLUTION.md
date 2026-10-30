@@ -50,6 +50,7 @@ Locally, from the repository root: `node tools/src/cli/prepare.ts --mode pr --ba
 │   ├── unit-test-backfill.md    # backfill mode
 │   ├── visual-evidence.yml      # screenshots and video for frontend changes
 │   └── ci.yml                   # typecheck and tests of backend, frontend, tools, visual
+├── actions/                     # gate and report steps shared by both gh-aw workflows
 └── scripts/                     # publish the report and the visual evidence comment
 tools/      # prepare, gates G0 to G7, report; tested on their own (npm test)
 visual/     # Playwright scenarios on the built frontend with a mocked API

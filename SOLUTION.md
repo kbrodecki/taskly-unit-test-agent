@@ -92,6 +92,7 @@ In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no
 - The visual evidence publisher trusts the comparison manifest written by the capture job, which builds PR code. Two PRs that publish at the same moment can race on the `visual-evidence` branch, and the losing one gets no comment.
 - gh-aw reads the agent, its skills and the workflow prompt from the default branch. A change to them takes effect after merge, not in the PR that makes it.
 - Without `GH_AW_CI_TRIGGER_TOKEN`, CI does not run on the agent's commit. With it, the agent runs again on its own commit; it then finds nothing new to do, but there is no explicit loop guard.
+- G2 allows only added lines, so an update cannot change existing test setup. When a test needs a different mock, the agent adds another `vi.mock` for the same module instead of editing the first one. `TodosPage.test.tsx` collected three `TodosHeader` mocks this way, and only the last one took effect, until a manual cleanup in [PR 63](https://github.com/kbrodecki/gh-aw-spike/pull/63/changes). Test files grow with each update until someone tidies them.
 - Skip reasons are not fully stable between runs (E1 stable 1 of 3). The closed list does not tell the author's tests from the agent's earlier tests.
 - Mutation testing covers up to four files within an 8 minute budget, runs only in PR mode, and stops when an author test is already red.
 - In a private repository the visual evidence images are links, not inline images.

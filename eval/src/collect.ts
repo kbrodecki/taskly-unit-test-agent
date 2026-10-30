@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { decisionMap, type ExpectedCase, type RunFacts, scoreRun, stability } from './score.ts';
 
-const repo = process.argv[2] ?? 'kbrodecki/gh-aw-spike';
+const repo = process.argv[2] ?? 'kbrodecki/taskly-unit-test-agent';
 const round = process.argv[3] ?? 'round-1';
 const branchPrefix = process.argv[4] ?? 'eval/';
 const only = process.argv[5]?.split(',');

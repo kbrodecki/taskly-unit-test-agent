@@ -24,7 +24,3 @@ coverage/
 
 # Unit test agent working files
 .unit-test-agent/
-
-# Visual evidence output
-visual/out/
-visual/test-results/

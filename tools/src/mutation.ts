@@ -7,10 +7,7 @@ export interface MutantCounts {
 
 export type Mutation = Map<string, MutantCounts>;
 
-export interface MutationRun {
-  counts?: Mutation;
-  reason?: string;
-}
+export type MutationRun = { counts: Mutation; reason?: never } | { reason: string; counts?: never };
 
 export interface MutationRow {
   file: string;

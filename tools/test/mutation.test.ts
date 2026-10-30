@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mergeMutation } from '../src/cli/shared.ts';
 import { compareMutation, mutationScore, parseMutationReport } from '../src/mutation.ts';
 
 const report = {
@@ -43,5 +44,15 @@ describe('compareMutation', () => {
     const result = compareMutation({ counts: new Map([[file, counts(2)]]) }, { counts: new Map([[file, counts(2, 6)]]) });
     expect(result.rows).toEqual([]);
     expect(result.reason).toContain('runs not comparable');
+  });
+});
+
+describe('mergeMutation', () => {
+  const counts = (detected: number) => ({ detected, survived: 0, noCoverage: 0, valid: detected });
+  it('joins the counts of every app, or returns the first run that has a reason', () => {
+    const backend = { counts: new Map([['backend/src/a.ts', counts(1)]]) };
+    const frontend = { counts: new Map([['frontend/src/b.ts', counts(2)]]) };
+    expect(mergeMutation([backend, frontend])).toEqual({ counts: new Map([['backend/src/a.ts', counts(1)], ['frontend/src/b.ts', counts(2)]]) });
+    expect(mergeMutation([backend, { reason: 'frontend: over the time budget' }, { reason: 'later' }])).toEqual({ reason: 'frontend: over the time budget' });
   });
 });

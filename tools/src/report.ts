@@ -12,16 +12,20 @@ export interface CoverageRow {
   after: number;
 }
 
-export interface ReportData {
-  decisions: DecisionEntry[];
-  decisionErrors: string[];
-  codeDecisions: CodeDecision[];
+// What the gates job writes to gates.json.
+export interface GateRun {
   gates: GateResult[];
+  decisionErrors: string[];
+  decisions: DecisionEntry[];
   authorFailures: string[];
   coverage: CoverageRow[];
   mutation?: MutationSummary;
-  runUrl?: string;
 }
+
+export type ReportData = GateRun & {
+  codeDecisions: CodeDecision[];
+  runUrl?: string;
+};
 
 export interface MutationSummary {
   rows: Array<{ file: string; scoreBefore: number; scoreAfter: number; before: { detected: number; valid: number }; after: { detected: number; valid: number } }>;

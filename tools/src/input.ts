@@ -26,6 +26,12 @@ export interface AgentInput {
   codeDecisions: CodeDecision[];
 }
 
+// What prepare writes to input.json: the agent input plus what the gates need from before the agent ran.
+export interface PreparedInput extends AgentInput {
+  headSha: string;
+  authorFailures: string[];
+}
+
 export function buildInput(
   mode: AgentInput['mode'],
   changed: ChangedFile[],
@@ -39,15 +45,15 @@ export function buildInput(
     if (file.kind === 'deleted') {
       codeDecisions.push({ file: file.path, reason: 'deleted', detail: 'file deleted in this change' });
     } else if (file.kind === 'filtered') {
-      codeDecisions.push({ file: file.path, reason: 'filtered', detail: file.filterReason ?? 'filtered' });
+      codeDecisions.push({ file: file.path, reason: 'filtered', detail: file.filterReason });
     } else {
       const lines = changedLines.get(file.path) ?? [];
       candidates.push({
         path: file.path,
-        area: file.area!,
+        area: file.area,
         status: file.status,
-        testPath: file.testPath!,
-        testExists: file.testExists!,
+        testPath: file.testPath,
+        testExists: file.testExists,
         changedLines: lines,
         uncoveredChangedLines: uncoveredLines(lines, coverage.get(file.path)),
       });

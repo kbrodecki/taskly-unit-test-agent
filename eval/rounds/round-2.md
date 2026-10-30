@@ -1,7 +1,7 @@
 | Case | Checks | Decisions exact | Decisions acceptable | Check as expected | Blocking gates | Only tests pushed | Stable | Cost | Turns | Agent min | Runs |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| E1 | Demo feature: clear completed tasks (commit 1 of PR 26) | 26/33 | 26/33 | 3/3 | none | 3/3 | 1/3 | $0.39 | 34 | 6.3 | [1](https://github.com/kbrodecki/gh-aw-spike/pull/48) [2](https://github.com/kbrodecki/gh-aw-spike/pull/49) [3](https://github.com/kbrodecki/gh-aw-spike/pull/50) |
-| E4 | Author lowers the title limit from 120 to 80 without fixing tests | 3/3 | 3/3 | 3/3 | none | 3/3 | 3/3 | $0.10 | 19 | 4.0 | [1](https://github.com/kbrodecki/gh-aw-spike/pull/51) [2](https://github.com/kbrodecki/gh-aw-spike/pull/52) [3](https://github.com/kbrodecki/gh-aw-spike/pull/53) |
+| E1 | Demo feature: clear completed tasks (commit 1 of PR 26) | 26/33 | 26/33 | 3/3 | none | 3/3 | 1/3 | $0.39 | 34 | 6.3 | [1](https://github.com/kbrodecki/taskly-unit-test-agent/pull/48) [2](https://github.com/kbrodecki/taskly-unit-test-agent/pull/49) [3](https://github.com/kbrodecki/taskly-unit-test-agent/pull/50) |
+| E4 | Author lowers the title limit from 120 to 80 without fixing tests | 3/3 | 3/3 | 3/3 | none | 3/3 | 3/3 | $0.10 | 19 | 4.0 | [1](https://github.com/kbrodecki/taskly-unit-test-agent/pull/51) [2](https://github.com/kbrodecki/taskly-unit-test-agent/pull/52) [3](https://github.com/kbrodecki/taskly-unit-test-agent/pull/53) |
 
 ### Mismatches
 

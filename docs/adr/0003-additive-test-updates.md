@@ -18,3 +18,4 @@ The agent adds test cases and may extend fixtures and imports, but never changes
 - Existing tests stay the specification. Only a person decides that a behavior change is intended.
 - A PR with a broken author test gets a red check from the agent even when the agent's work is fine. Evaluation case E4 tests exactly this.
 - The agent may extend its own earlier tests in a later commit of the same PR, again only by adding lines.
+- The agent cannot change existing setup either, so it adds a second mock of a module instead of editing the first. Superseded setup stays in the file until a person removes it.

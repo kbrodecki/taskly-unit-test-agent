@@ -21,7 +21,6 @@ flowchart LR
 | Code computes, the model judges | changed lines, coverage, gates and the report are reproducible; the model only decides and writes tests, through the `decisions.json` contract | [ADR 2](docs/adr/0002-code-computes-model-judges.md) |
 | Updates to existing tests are additive only | an agent that edits a failing test can hide a regression; a red author test is reported for a human | [ADR 3](docs/adr/0003-additive-test-updates.md) |
 | Gates in their own job decide the push, all or nothing | the patch is pushed only when every gate passes; the agent drops tests it cannot fix itself | [ADR 4](docs/adr/0004-gates-job-all-or-nothing.md) |
-| Visual evidence from the real app on a mocked API | before and after screenshots of fixed scenarios with no model involved; images on a separate branch | [ADR 5](docs/adr/0005-visual-evidence-mocked-api.md) |
 | `skip` is a decision with a closed list of reasons | the report shows why a file got no tests; code rejects `already-covered` and `covered-by-author` while changed lines are uncovered | [test-decisions skill](.github/skills/test-decisions/SKILL.md) |
 | Mutation testing as a signal, not a blocker | Stryker scores before and after the patch; more detected mutants is an alternative proof for G7 | [tools README](tools/README.md) |
 | Backfill is a separate workflow with the same agent and gates | different trigger, input and safe output; the rules stay in one place | [unit-test-backfill.md](.github/workflows/unit-test-backfill.md) |
@@ -48,19 +47,17 @@ Locally, from the repository root: `node tools/src/cli/prepare.ts --mode pr --ba
 ├── workflows/
 │   ├── unit-test-agent.md       # PR mode (gh-aw source; .lock.yml is the compiled workflow)
 │   ├── unit-test-backfill.md    # backfill mode
-│   ├── visual-evidence.yml      # screenshots and video for frontend changes
-│   └── ci.yml                   # typecheck and tests of backend, frontend, tools, visual
+│   └── ci.yml                   # typecheck and tests of backend, frontend, tools
 ├── actions/                     # gate and report steps shared by both gh-aw workflows
-└── scripts/                     # publish the report and the visual evidence comment
+└── scripts/                     # publish the report
 tools/      # prepare, gates G0 to G7, report; tested on their own (npm test)
-visual/     # Playwright scenarios on the built frontend with a mocked API
 eval/       # expected results, collector, results of each evaluation round
-docs/adr/   # the five decisions above
+docs/adr/   # the four decisions above
 ```
 
 ## 4. Example run
 
-- **Demo PR**, [Clear completed tasks](https://github.com/kbrodecki/taskly-unit-test-agent/pull/26/changes) (merged). Commit 1 adds the feature with one backend repository test and no frontend tests. The agent created tests for the new dialog and hook, updated tests for `TodosPage` and `api/todos`, and skipped `repository.ts` because the author's test covers it. It also skipped `TodosHeader.tsx` as covered by the author, which was wrong: the header tests never rendered the new button, so a person added them later. Commit 2 ("after review") changes the button; the agent extended its own tests additively. The [run for commit 2](https://github.com/kbrodecki/taskly-unit-test-agent/actions/runs/40893602871) loaded all five skills through the `Skill` tool: `test-decisions`, `test-case-heuristics`, `backend-unit-tests`, `frontend-unit-tests` and `gates-loop`. See the [agent report](https://github.com/kbrodecki/taskly-unit-test-agent/pull/26#issuecomment-6498643517) and the [visual evidence](https://github.com/kbrodecki/taskly-unit-test-agent/pull/26#issuecomment-6498461282) (a GIF of the new scenario and the changed screens).
+- **Demo PR**, [Clear completed tasks](https://github.com/kbrodecki/taskly-unit-test-agent/pull/26/changes) (merged). Commit 1 adds the feature with one backend repository test and no frontend tests. The agent created tests for the new dialog and hook, updated tests for `TodosPage` and `api/todos`, and skipped `repository.ts` because the author's test covers it. It also skipped `TodosHeader.tsx` as covered by the author, which was wrong: the header tests never rendered the new button, so a person added them later. Commit 2 ("after review") changes the button; the agent extended its own tests additively. The [run for commit 2](https://github.com/kbrodecki/taskly-unit-test-agent/actions/runs/40893602871) loaded all five skills through the `Skill` tool: `test-decisions`, `test-case-heuristics`, `backend-unit-tests`, `frontend-unit-tests` and `gates-loop`. See the [agent report](https://github.com/kbrodecki/taskly-unit-test-agent/pull/26#issuecomment-6498643517).
 - **Backfill PR**, [Add missing unit tests](https://github.com/kbrodecki/taskly-unit-test-agent/pull/24/changes) (merged). Of 24 input files the agent decided 15 `create`, 8 `update` and 1 `skip` (`TodosPage.tsx`, `needs-refactor`), wrote 23 test files, and passed every gate. Line coverage went from 33.0% to 100% in the backend and from 47.7% to 89.4% in the frontend. The run took 126 turns, $1.22 and 16 minutes. [Report](https://github.com/kbrodecki/taskly-unit-test-agent/pull/24#issuecomment-6495119717), rendered from the run's artifacts because the run could not open the PR itself.
 
 ## 5. Evaluation
@@ -91,7 +88,6 @@ In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no
 
 - The untrusted party is the agent, not the PR author. Same-repository authors already have write access. The workflows run their code, and the `gates` job runs the `tools/` version from the PR branch, so a PR can change the gate code it is checked by. A production setup would run the gates from the base branch.
 - The test checks are syntactic. G3 and G6 do not catch a tautology such as `expect(1).toBe(1)`. New tests are matched by title, so a new test that reuses an existing title in another `describe` is not linted. Mutation testing partly covers this.
-- The visual evidence publisher trusts the comparison manifest written by the capture job, which builds PR code. Two PRs that publish at the same moment can race on the `visual-evidence` branch, and the losing one gets no comment.
 - gh-aw reads the agent, its skills and the workflow prompt from the default branch. A change to them takes effect after merge, not in the PR that makes it.
 - Without `GH_AW_CI_TRIGGER_TOKEN`, CI does not run on the agent's commit. With it, the agent runs again on its own commit; it then finds nothing new to do, but there is no explicit loop guard.
 - G2 allows only added lines, so an update cannot change existing test setup. When a test needs a different mock, the agent adds another `vi.mock` for the same module instead of editing the first one. `TodosPage.test.tsx` collected three `TodosHeader` mocks this way, and only the last one took effect, until a manual cleanup in [PR 63](https://github.com/kbrodecki/taskly-unit-test-agent/pull/63/changes). Test files grow with each update until someone tidies them.
@@ -104,4 +100,4 @@ In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no
 - A second model as a reviewer of the tests, outside the decision path.
 - Mutation score as a blocking gate for critical paths, with Stryker's incremental mode and a cache.
 - Skill changes evaluated in CI against the `eval/` cases before merge.
-- Telemetry of cost, turns and decisions per run, and retention rules for artifacts and the `visual-evidence` branch.
+- Telemetry of cost, turns and decisions per run, and retention rules for artifacts.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, guardDiff, lintTests, lostTests, newTests } from '../src/gates.ts';
+import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, guardDiff, lintTests, analyzeTestChange } from '../src/gates.ts';
 import { parsePatch } from '../src/patch.ts';
 import { findTests } from '../src/test-ast.ts';
 
@@ -184,16 +184,22 @@ describe('G2 guardDiff', () => {
   });
 });
 
-describe('lostTests', () => {
+describe('analyzeTestChange', () => {
   it('finds an existing test hidden by added comment lines, counting duplicate titles', () => {
     const before = "it('a', () => { expect(1).toBe(1); });\nit('b', () => { expect(2).toBe(2); });\nit('b', () => { expect(3).toBe(3); });";
     const after = "it('a', () => { expect(1).toBe(1); });\n/*\nit('b', () => { expect(2).toBe(2); });\n*/\nit('b', () => { expect(3).toBe(3); });\nit('c', () => { expect(4).toBe(4); });";
-    expect(lostTests(before, after, 'x.test.ts')).toEqual(['b']);
-    expect(lostTests(undefined, after, 'x.test.ts')).toEqual([]);
+    expect(analyzeTestChange(before, after, 'x.test.ts').lost).toEqual(['b']);
+    expect(analyzeTestChange(undefined, after, 'x.test.ts').lost).toEqual([]);
+  });
+
+  it('G2 fails on a lost test even when the diff itself is additive', () => {
+    const diff = { path: 'backend/tests/x.test.ts', isNew: false, isDeleted: false, isRename: false, isSymlink: false, modeChanged: false, added: ['/*', '*/'], removed: [] };
+    expect(guardDiff([diff]).status).toBe('pass');
+    expect(guardDiff([diff], ['backend/tests/x.test.ts: existing test "b" is gone'])).toMatchObject({ status: 'fail', details: ['backend/tests/x.test.ts: existing test "b" is gone'] });
   });
 });
 
-describe('findTests and newTests', () => {
+describe('findTests and new tests', () => {
   const before = "it('lists tasks', () => { expect(list()).toEqual([]); });";
   const after = `${before}
 describe('create', () => {
@@ -216,11 +222,11 @@ describe('create', () => {
   });
 
   it('returns only tests whose names are new', () => {
-    expect(newTests(before, after, 'x.test.ts').map((test) => test.name)).toEqual(['rejects an empty title', 'handles %s', 'no assertion', 'dangling expect']);
+    expect(analyzeTestChange(before, after, 'x.test.ts').tests.map((test) => test.name)).toEqual(['rejects an empty title', 'handles %s', 'no assertion', 'dangling expect']);
   });
 
   it('G3 flags tests without expect and expect without a matcher', () => {
-    expect(lintTests([{ path: 'x.test.ts', tests: newTests(before, after, 'x.test.ts') }]).details).toEqual([
+    expect(lintTests([{ path: 'x.test.ts', tests: analyzeTestChange(before, after, 'x.test.ts').tests }]).details).toEqual([
       'x.test.ts: "no assertion" has no expect',
       'x.test.ts: "dangling expect" calls expect without a matcher',
     ]);

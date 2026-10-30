@@ -52,7 +52,7 @@ function keepsImport(line: string, added: string[]): boolean {
   return added.some((item) => SPECIFIER.exec(item)?.[1] === specifier);
 }
 
-export function guardDiff(diffs: FileDiff[]): GateResult {
+export function guardDiff(diffs: FileDiff[], lost: string[] = []): GateResult {
   const problems: string[] = [];
   for (const diff of diffs.filter((item) => allowed(item.path) || (item.oldPath !== undefined && allowed(item.oldPath)))) {
     if (diff.isDeleted) {
@@ -77,27 +77,25 @@ export function guardDiff(diffs: FileDiff[]): GateResult {
       }
     }
   }
-  return gate('G2', 'Changes to existing tests are additive only', problems);
+  return gate('G2', 'Changes to existing tests are additive only', [...problems, ...lost]);
 }
 
-// Additive edits can still hide a test, for example by wrapping it in a block comment. Every test
-// the file had before the patch must still be there after it (counted, so duplicate titles count too).
-export function lostTests(before: string | undefined, after: string, fileName: string): string[] {
-  if (!before) return [];
+// Parses both sides once. New tests are the ones whose title is new. Additive edits can still hide an
+// existing test, for example by wrapping it in a block comment, so every test the file had before the
+// patch must still be there after it (counted, so duplicate titles count too).
+export function analyzeTestChange(before: string | undefined, after: string, fileName: string): { tests: TestCase[]; lost: string[] } {
+  const previous = before ? findTests(before, fileName) : [];
+  const current = findTests(after, fileName);
+  const previousNames = new Set(previous.map((test) => test.name));
   const left = new Map<string, number>();
-  for (const test of findTests(after, fileName)) left.set(test.name, (left.get(test.name) ?? 0) + 1);
+  for (const test of current) left.set(test.name, (left.get(test.name) ?? 0) + 1);
   const lost: string[] = [];
-  for (const test of findTests(before, fileName)) {
+  for (const test of previous) {
     const count = left.get(test.name) ?? 0;
     if (count === 0) lost.push(test.name);
     else left.set(test.name, count - 1);
   }
-  return lost;
-}
-
-export function newTests(before: string | undefined, after: string, fileName: string): TestCase[] {
-  const old = new Set(before ? findTests(before, fileName).map((test) => test.name) : []);
-  return findTests(after, fileName).filter((test) => !old.has(test.name));
+  return { tests: current.filter((test) => !previousNames.has(test.name)), lost };
 }
 
 export function lintTests(files: Array<{ path: string; tests: TestCase[] }>): GateResult {

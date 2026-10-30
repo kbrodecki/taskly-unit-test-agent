@@ -8,13 +8,10 @@ export interface Change {
 
 export type Area = 'backend' | 'frontend';
 
-export interface ChangedFile extends Change {
-  area?: Area;
-  kind: 'source' | 'filtered' | 'deleted';
-  filterReason?: string;
-  testPath?: string;
-  testExists?: boolean;
-}
+export type ChangedFile =
+  | (Change & { kind: 'source'; area: Area; testPath: string; testExists: boolean })
+  | (Change & { kind: 'filtered'; filterReason: string })
+  | (Change & { kind: 'deleted' });
 
 const STATUS: Record<string, ChangeStatus> = { A: 'added', M: 'modified', D: 'deleted', R: 'renamed', C: 'added', T: 'modified' };
 

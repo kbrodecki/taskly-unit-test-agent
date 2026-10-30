@@ -31,22 +31,21 @@ export interface SuiteRun {
   coverage: Coverage;
 }
 
-function runSuite(root: string, app: string, outDir: string, label: string): SuiteRun {
-  const resultFile = join(outDir, `${label}-${app}.json`);
-  const args = ['vitest', 'run', '--coverage', '--coverage.reportOnFailure', '--reporter=json', `--outputFile=${resultFile}`];
-  spawnSync('npx', args, { cwd: join(root, app), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+// One Vitest run with the JSON reporter; returns failing tests prefixed with the app. A run that wrote
+// no results counts as one failure (NO_RESULTS), so a crashed suite never passes.
+export function runVitest(root: string, app: string, resultFile: string, args: string[]): string[] {
+  spawnSync('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${resultFile}`, ...args], { cwd: join(root, app), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const json = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, 'utf8')) : { testResults: [] };
-  const lcovFile = join(root, app, 'coverage', 'lcov.info');
-  const coverage = existsSync(lcovFile) ? parseLcov(readFileSync(lcovFile, 'utf8'), app) : new Map();
-  return { failed: failedTests(json, join(root, app)), coverage };
+  return failedTests(json, join(root, app)).map((name) => `${app}/${name}`);
 }
 
 export function runAll(root: string, outDir: string, label: string): SuiteRun {
-  const runs = APPS.map((app) => runSuite(root, app, outDir, label));
-  return {
-    failed: runs.flatMap((run, i) => run.failed.map((name) => `${APPS[i]}/${name}`)),
-    coverage: mergeCoverage(...runs.map((run) => run.coverage)),
-  };
+  const failed = APPS.flatMap((app) => runVitest(root, app, join(outDir, `${label}-${app}.json`), ['--coverage', '--coverage.reportOnFailure']));
+  const coverage = APPS.map((app) => {
+    const lcovFile = join(root, app, 'coverage', 'lcov.info');
+    return existsSync(lcovFile) ? parseLcov(readFileSync(lcovFile, 'utf8'), app) : new Map();
+  });
+  return { failed, coverage: mergeCoverage(...coverage) };
 }
 
 const STRYKER = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'node_modules', '.bin', 'stryker');
@@ -70,9 +69,12 @@ export function runMutation(root: string, app: string, files: string[], outDir: 
 }
 
 export function mergeMutation(runs: MutationRun[]): MutationRun {
-  const failed = runs.find((run) => !run.counts);
-  if (failed) return failed;
-  return { counts: new Map(runs.flatMap((run) => [...(run.counts as Mutation)])) };
+  const counts: Mutation = new Map();
+  for (const run of runs) {
+    if (!run.counts) return run;
+    for (const entry of run.counts) counts.set(...entry);
+  }
+  return { counts };
 }
 
 export function serializeCoverage(coverage: Coverage): Record<string, Array<[number, number]>> {

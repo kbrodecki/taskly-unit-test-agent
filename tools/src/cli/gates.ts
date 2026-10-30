@@ -1,13 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { validateDecisions } from '../decisions.ts';
-import { checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests, lostTests, newTests } from '../gates.ts';
-import type { AgentInput } from '../input.ts';
+import { validateDecisions, type Validation } from '../decisions.ts';
+import { analyzeTestChange, checkAssertions, checkPaths, checkPromised, checkValue, compareFailures, gate, type GateResult, guardDiff, lintTests } from '../gates.ts';
+import type { PreparedInput } from '../input.ts';
 import { parsePatch } from '../patch.ts';
 import { compareMutation, mutationScore, type MutationRun } from '../mutation.ts';
-import { failedTests, linePercent } from '../vitest-results.ts';
-import { APPS, arg, deserializeCoverage, git, mergeMutation, readJson, runAll, runMutation, worktreePatch, writeJson } from './shared.ts';
+import type { GateRun } from '../report.ts';
+import { linePercent } from '../vitest-results.ts';
+import { APPS, arg, deserializeCoverage, git, mergeMutation, readJson, runAll, runMutation, runVitest, worktreePatch, writeJson } from './shared.ts';
 
 const root = resolve(arg('root', '.'));
 const dir = resolve(arg('input', '.unit-test-agent'));
@@ -20,15 +21,15 @@ const mutationOn = !worktree && process.argv.includes('--mutation');
 const mutationBudgetMs = Number(arg('mutation-minutes', '8')) * 60000;
 const MUTATION_FILES = 4;
 
-const input = readJson<AgentInput & { headSha?: string; authorFailures: string[] }>(join(dir, 'input.json'));
-const base = input.headSha ?? 'HEAD';
+const input = readJson<PreparedInput>(join(dir, 'input.json'));
+const base = input.headSha;
 const coverageBefore = deserializeCoverage(readJson(join(dir, 'coverage-before.json')));
 const decisionsFile = join(dir, 'decisions.json');
-const validation = existsSync(decisionsFile)
+const validation: Validation = existsSync(decisionsFile)
   ? validateDecisions(readJson(decisionsFile), input)
   : input.files.length === 0
-    ? ({ ok: true, decisions: { mode: input.mode, files: [] } } as const)
-    : ({ ok: false, errors: ['decisions.json is missing'] } as const);
+    ? { ok: true, decisions: { mode: input.mode, files: [] } }
+    : { ok: false, errors: ['decisions.json is missing'] };
 
 const patch = worktree ? worktreePatch(root, base) : patchFile && existsSync(patchFile) ? readFileSync(patchFile, 'utf8') : '';
 const diffs = parsePatch(patch);
@@ -47,11 +48,12 @@ gates.push(checkPromised(promised, diffs));
 if (diffs.length === 0) {
   gates.push({ id: 'G1-G7', name: 'No test changes to check', status: 'skipped', details: [] });
 } else {
-  gates.push(checkPaths(diffs), guardDiff(diffs));
+  gates.push(checkPaths(diffs));
   // Before the patch: the source is identical in both runs (G1 allows only tests), so the counts are comparable.
   const mutationBefore = mutationOn && mutated.length > 0 ? mutate('before', 0.5) : undefined;
   const applied = worktree ? { status: 0, stderr: '' } : spawnSync('git', ['apply', '--whitespace=nowarn', patchFile], { cwd: root, encoding: 'utf8' });
   if (applied.status !== 0) {
+    gates.push(guardDiff(diffs));
     gates.push(gate('G0', 'Patch applies to the PR head', [applied.stderr.trim() || 'git apply failed']));
     if (mutationBefore) mutation = { rows: [], reason: 'the patch did not apply' };
   } else {
@@ -64,11 +66,9 @@ if (diffs.length === 0) {
         before = undefined;
       }
       const after = readFileSync(join(root, diff.path), 'utf8');
-      return { path: diff.path, tests: newTests(before, after, diff.path), lost: lostTests(before, after, diff.path) };
+      return { path: diff.path, ...analyzeTestChange(before, after, diff.path) };
     });
-    const lost = added.flatMap((file) => file.lost.map((name) => `${file.path}: existing test "${name}" is gone (commented out, removed or renamed)`));
-    const additive = gates.find((item) => item.id === 'G2');
-    if (additive && lost.length > 0) Object.assign(additive, { status: 'fail', details: [...additive.details, ...lost] });
+    gates.push(guardDiff(diffs, added.flatMap((file) => file.lost.map((name) => `${file.path}: existing test "${name}" is gone (commented out, removed or renamed)`))));
     const typeErrors = APPS.flatMap((app) => {
       const run = spawnSync('npm', ['run', '--silent', 'typecheck'], { cwd: join(root, app), encoding: 'utf8' });
       return run.status === 0 ? [] : [`${app}: typecheck failed: ${(run.stdout + run.stderr).trim().split('\n').slice(0, 5).join(' / ')}`];
@@ -87,10 +87,8 @@ if (diffs.length === 0) {
       const files = testFiles.filter((diff) => diff.path.startsWith(`${app}/`)).map((diff) => diff.path.slice(app.length + 1));
       if (files.length === 0) continue;
       for (let seed = 1; seed <= reruns; seed += 1) {
-        const resultFile = join(dir, `shuffle-${app}-${seed}.json`);
-        spawnSync('npx', ['vitest', 'run', '--sequence.shuffle', `--sequence.seed=${seed}`, '--reporter=json', `--outputFile=${resultFile}`, ...files], { cwd: join(root, app), encoding: 'utf8' });
-        const json = existsSync(resultFile) ? JSON.parse(readFileSync(resultFile, 'utf8')) : { testResults: [] };
-        const added = compareFailures(input.authorFailures, failedTests(json, join(root, app)).map((name) => `${app}/${name}`)).added;
+        const failed = runVitest(root, app, join(dir, `shuffle-${app}-${seed}.json`), ['--sequence.shuffle', `--sequence.seed=${seed}`, ...files]);
+        const added = compareFailures(input.authorFailures, failed).added;
         if (added.length > 0) flaky.push(`${app}: run ${seed} of ${reruns} with shuffled order failed: ${added.slice(0, 3).join('; ')}`);
       }
     }
@@ -102,7 +100,7 @@ if (diffs.length === 0) {
   }
 }
 
-const result = {
+const result: GateRun = {
   gates,
   decisionErrors: validation.ok ? [] : validation.errors,
   decisions: validation.ok ? validation.decisions.files : [],

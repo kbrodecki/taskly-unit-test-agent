@@ -67,6 +67,8 @@ ReportPublishes ==
   /\ UNCHANGED <<agent, output, detection, gates, push, blocked, cancelled, pushed>>
 
 \* The report job has a final step with if: failure() that posts a comment and a red check without the checkout.
+\* Not modelled: a timeout of the report job (10 minutes) cancels its steps, so the fallback does not run; the fallback
+\* itself can fail on the GitHub API. Both leave the PR without a result.
 ReportCrashes ==
   /\ push /= "pending" /\ report = "pending"
   /\ detection = "verdict" /\ ~cancelled

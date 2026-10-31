@@ -105,7 +105,7 @@ jobs:
     if: needs.gates.result == 'success'
   report:
     needs: [agent, detection, gates, safe_outputs]
-    if: always()
+    if: "!cancelled()"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -128,6 +128,29 @@ jobs:
           gates: ${{ needs.gates.result }}
           push: ${{ needs.safe_outputs.result }}
           pull-number: ${{ github.event.pull_request.number }}
+  report_blocked:
+    needs: [detection]
+    detection-gate: status-only
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
+    steps:
+      - uses: actions/checkout@v7
+        if: needs.detection.result == 'failure'
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - uses: actions/github-script@v9
+        if: needs.detection.result == 'failure'
+        with:
+          script: |
+            const { publishBlocked } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-report.cjs`);
+            await publishBlocked({ github, context, core, pullNumber: context.payload.pull_request.number });
 ---
 
 # Unit Test Agent

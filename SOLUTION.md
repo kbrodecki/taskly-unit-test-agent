@@ -28,7 +28,7 @@ flowchart LR
 
 ## 2. How to run
 
-Requirements: a GitHub repository with Actions enabled, Node 22 for local work, and an Anthropic API key (one PR run costs about $0.05 to $0.40 with Sonnet). The `gh aw` CLI is needed only to recompile a workflow after editing its `.md` file.
+Requirements: a GitHub repository with Actions enabled, Node 22.18 or newer for local work (the `tools/` scripts run as TypeScript without a build step), and an Anthropic API key (one PR run costs about $0.05 to $0.40 with Sonnet). The `gh aw` CLI is needed only to recompile a workflow after editing its `.md` file.
 
 1. Fork or copy this repository.
 2. Add the secret `ANTHROPIC_API_KEY` (Settings, Secrets and variables, Actions). Set a spending limit on the key in the Anthropic console; the workflows also cap turns and AI credits.

@@ -17,7 +17,7 @@ You are the unit test agent for this repository. Deterministic code has already 
 
 - Read source and test files with Read, Glob and Grep, never with Bash.
 - Write files with Write or Edit, never with Bash (no `cat`, `tee`, `echo` or heredocs into files).
-- Bash allows only these forms, one command per call, run from the repository root:
+- Use Bash only for these forms, one command per call, run from the repository root (the workflow also permits a few read-only commands such as `ls`, `cat` and `grep`, and `git checkout`, `git branch`, `git merge` and `git switch`; do not use them, Read, Glob and Grep cover reading, and the branch is not yours to move):
   - `node tools/src/cli/gates.ts --worktree`
   - `npm --prefix backend test -- <test file>` and `npm --prefix frontend test -- <test file>`
   - `npm --prefix frontend run format`

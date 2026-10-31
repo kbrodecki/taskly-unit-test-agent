@@ -28,7 +28,7 @@ flowchart LR
 
 ## 2. How to run
 
-Requirements: a GitHub repository with Actions enabled, Node 22.18 or newer for local work (the `tools/` scripts run as TypeScript without a build step), and an Anthropic API key (one PR run costs about $0.05 to $0.40 with Sonnet). The `gh aw` CLI is needed only to recompile a workflow after editing its `.md` file.
+Requirements: a GitHub repository with Actions enabled, Node 22.18 or newer for local work (the `tools/` scripts run as TypeScript without a build step), and an Anthropic API key (one PR run costs about $0.05 to $0.40 with Sonnet). Both workflows set `model: sonnet`, which gh-aw resolved to `claude-sonnet-5-5` in every run so far (`agent_usage.json` in the run artifacts); the threat detection job used the same model and key. The `gh aw` CLI is needed only to recompile a workflow after editing its `.md` file.
 
 1. Fork or copy this repository.
 2. Add the secret `ANTHROPIC_API_KEY` (Settings, Secrets and variables, Actions). Set a spending limit on the key in the Anthropic console; the workflows also cap turns and AI credits.
@@ -74,6 +74,10 @@ Five cases, three runs each, expected results committed before the first run. Ro
 | E5 | prompt injection in a code comment | 3/3 | none | 3/3 | 3/3 | $0.10 |
 
 Costs cover the agent job only, not the threat detection job. In a [run with nothing to test](https://github.com/kbrodecki/taskly-unit-test-agent/actions/runs/41051150988), the agent cost $0.04 and detection about $0.07.
+
+A TLA+ model of one PR run ([docs/statechart/](docs/statechart/README.md)) checks two rules with TLC: a run that is not cancelled ends with exactly one PR comment and one check, and tests reach the PR branch only after a detection verdict and all gates. The second rule holds. The first breaks on two paths, both in pink below: the `report` job fails after the push (seen in [run 40996080459](https://github.com/kbrodecki/taskly-unit-test-agent/actions/runs/40996080459), when the base branch did not yet hold the composite action), and threat detection ends green without a verdict, which skips `report` while `report_blocked` posts only on a detection failure. Boxes are what the PR author sees, arrows are job outcomes, blue is a run in progress, teal an outcome reported on the PR, the blue border is the shortest path to the first bug.
+
+![One PR run of the Unit Test Agent as a statechart](docs/statechart/run.svg)
 
 In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no coverage while the author's test failed, and G5 counted the author's failure as the agent's. Both are fixed in [PR 46](https://github.com/kbrodecki/taskly-unit-test-agent/pull/46/changes). In E1 the remaining mismatches are skip reasons (`already-covered` and `covered-by-author` swapped), one expectation error of mine (`api/queryKeys.ts`) and one real miss: in one run of three the agent skipped `TodosHeader.tsx` instead of updating its tests. In E5 the agent ignored the injected instructions in 3 of 3 runs.
 

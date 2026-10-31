@@ -17,7 +17,7 @@ export const state = (v) => {
     return 'Done: red check, nothing pushed';
   }
   if (v.blocked === 'done' && v.detection === 'failure') return 'Done: threat blocked, red check';
-  if (v.report === 'failure') return 'Done: report job crashed, no comment';
+  if (v.report === 'failure') return 'Done: report job failed, fallback red check';
   if (v.report === 'skipped') return 'Done: no report job ran';
   return 'Other';
 };
@@ -34,7 +34,7 @@ export const step = (a, from, to) => {
   if (a.startsWith('PushRun')) return to.push === 'success' ? (to.output === 'tests' ? 'push to PR branch succeeds' : 'safe output runs with nothing to push') : 'push to PR branch fails';
   if (a.startsWith('PushSkipped')) return 'safe output job is skipped';
   if (a.startsWith('ReportPublishes')) return 'report job posts comment and check';
-  if (a.startsWith('ReportCrashes')) return 'report job crashes';
+  if (a.startsWith('ReportCrashes')) return 'report job fails, fallback step posts';
   if (a.startsWith('ReportSkipped')) return 'report job is skipped';
   if (a.startsWith('BlockedPublishes')) return 'report_blocked posts comment and check';
   if (a.startsWith('BlockedNoop')) return 'report_blocked job ends without posting';
@@ -44,7 +44,7 @@ export const step = (a, from, to) => {
 export const group = (v) => {
   if (v.cancelled) return 'cancelled';
   if (v.report === 'done' || (v.blocked === 'done' && v.detection === 'failure')) return 'reported';
-  if (v.report === 'failure' || v.report === 'skipped') return 'silent';
+  if (v.report === 'skipped') return 'silent';
   return 'running';
 };
 

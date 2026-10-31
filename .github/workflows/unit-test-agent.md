@@ -128,6 +128,25 @@ jobs:
           gates: ${{ needs.gates.result }}
           push: ${{ needs.safe_outputs.result }}
           pull-number: ${{ github.event.pull_request.number }}
+      - name: Fallback report
+        # Runs only when a step above failed: the PR still gets a comment and a red check, without any file from the checkout.
+        if: failure()
+        uses: actions/github-script@v9
+        env:
+          PULL_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const marker = '<!-- unit-test-agent-report -->';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `${marker}\n## Unit Test Agent\n\n❌ The report job failed before it could publish the result. Gates and push are in the [run log](${runUrl}).\n`;
+            const issue_number = Number(process.env.PULL_NUMBER);
+            if (!issue_number) { core.warning('no pull request to report on'); return; }
+            const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number, per_page: 100 });
+            const existing = comments.find((comment) => comment.user?.login === 'github-actions[bot]' && comment.body && comment.body.includes(marker));
+            if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+            const { data: pull } = await github.rest.pulls.get({ ...context.repo, pull_number: issue_number });
+            await github.rest.checks.create({ ...context.repo, name: 'Unit Test Agent', head_sha: pull.head.sha, status: 'completed', conclusion: 'failure', details_url: runUrl, output: { title: 'Report failed', summary: body } });
   report_blocked:
     needs: [detection]
     detection-gate: status-only

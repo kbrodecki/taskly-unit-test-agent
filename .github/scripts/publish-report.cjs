@@ -5,22 +5,11 @@ const fs = require('fs');
 const MARKER = '<!-- unit-test-agent-report -->';
 const TITLES = { success: 'Tests added and gates passed', neutral: 'Nothing to test', failure: 'Blocked or failing tests' };
 
-module.exports = async function publishReport({ github, context, core, results, pullNumber }) {
-  const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-  const reportFile = '.unit-test-agent/report.md';
-  let body;
-  let conclusion;
-  if (fs.existsSync(reportFile)) {
-    body = fs.readFileSync(reportFile, 'utf8');
-    conclusion = fs.readFileSync('.unit-test-agent/conclusion.txt', 'utf8').trim();
-  } else {
-    body = `${MARKER}\n## Unit Test Agent\n\nThe run stopped before the gates produced a result: agent ${results.agent}, threat detection ${results.detection}, gates ${results.gates}. [Run log](${runUrl})\n`;
-    conclusion = 'failure';
-  }
-  if (results.gates === 'success' && !['success', 'skipped'].includes(results.push)) {
-    body += `\n> The gates passed, but publishing the tests ended with \`${results.push}\`. [Run log](${runUrl})\n`;
-    conclusion = 'failure';
-  }
+function runLink(context) {
+  return `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+}
+
+async function publish({ github, context, core, body, conclusion, pullNumber }) {
   await core.summary.addRaw(body).write();
   if (!pullNumber) return;
 
@@ -38,7 +27,31 @@ module.exports = async function publishReport({ github, context, core, results, 
     head_sha: pull.head.sha,
     status: 'completed',
     conclusion,
-    details_url: runUrl,
+    details_url: runLink(context),
     output: { title: TITLES[conclusion] || conclusion, summary: body.slice(0, 65000) },
   });
+}
+
+module.exports = async function publishReport({ github, context, core, results, pullNumber }) {
+  const runUrl = runLink(context);
+  const reportFile = '.unit-test-agent/report.md';
+  let body;
+  let conclusion;
+  if (fs.existsSync(reportFile)) {
+    body = fs.readFileSync(reportFile, 'utf8');
+    conclusion = fs.readFileSync('.unit-test-agent/conclusion.txt', 'utf8').trim();
+  } else {
+    body = `${MARKER}\n## Unit Test Agent\n\nThe run stopped before the gates produced a result: agent ${results.agent}, threat detection ${results.detection}, gates ${results.gates}. [Run log](${runUrl})\n`;
+    conclusion = 'failure';
+  }
+  if (results.gates === 'success' && !['success', 'skipped'].includes(results.push)) {
+    body += `\n> The gates passed, but publishing the tests ended with \`${results.push}\`. [Run log](${runUrl})\n`;
+    conclusion = 'failure';
+  }
+  await publish({ github, context, core, body, conclusion, pullNumber });
+};
+
+module.exports.publishBlocked = async function publishBlocked({ github, context, core, pullNumber }) {
+  const body = `${MARKER}\n## Unit Test Agent\n\n❌ Threat detection did not pass, so the agent's tests were neither gated nor published. [Run log](${runLink(context)})\n`;
+  await publish({ github, context, core, body, conclusion: 'failure', pullNumber });
 };

@@ -11,6 +11,7 @@ flowchart LR
   G -->|all pass| S[safe output: push tests<br/>to the PR branch]
   G --> R[report job: PR comment + check]
   S --> R
+  D -->|blocked| B[report_blocked job: PR comment + check]
 ```
 
 ## 1. Key decisions
@@ -92,6 +93,7 @@ In round 1, G5 and G7 blocked the agent's correct test in E4. The suite wrote no
 - Without `GH_AW_CI_TRIGGER_TOKEN`, CI does not run on the agent's commit. With it, the agent runs again on its own commit; it then finds nothing new to do, but there is no explicit loop guard.
 - G2 allows only added lines, so an update cannot change existing test setup. When a test needs a different mock, the agent adds another `vi.mock` for the same module instead of editing the first one. `TodosPage.test.tsx` collected three `TodosHeader` mocks this way, and only the last one took effect, until a manual cleanup in [PR 63](https://github.com/kbrodecki/taskly-unit-test-agent/pull/63/changes). Test files grow with each update until someone tidies them.
 - Skip reasons are not fully stable between runs (E1 stable 1 of 3). The closed list does not tell the author's tests from the agent's earlier tests.
+- When threat detection blocks a run, the PR gets only a status comment and a failed check, with no detail from the agent's output. That path was checked by compiling the workflow and reading the compiled condition, not by a live run. A backfill run has no such report: it has no PR yet.
 - Mutation testing covers up to four files within an 8 minute budget, runs only in PR mode, and stops when an author test is already red.
 
 ## 8. Production version
